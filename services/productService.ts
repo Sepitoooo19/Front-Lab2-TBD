@@ -75,7 +75,7 @@ export const getProductsByCompanyId = async (companyId: number) => {
 // Entrada : lista de ids
 // Salida : Lista de productos
 export const getProductsByIds = async (ids: number[]): Promise<Product[]> => {
-  const response = await fetch(`http://localhost:8090/products?ids=${ids.join(',')}`);
+  const response = await fetch(`${config.public.apiBase}/products?ids=${ids.join(',')}`);
   if (!response.ok) {
     throw new Error('Error al obtener los productos');
   }

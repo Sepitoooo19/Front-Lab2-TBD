@@ -1,8 +1,10 @@
-<!-- pagina principal redirigida al login-->
-<script setup>
-import { useRouter } from 'vue-router';
-
-const router = useRouter();
-
-router.push('/login'); // Redirige automáticamente al login
+<script setup lang="ts">
+definePageMeta({
+  middleware: 'auth-role' // Redirige según login y rol
+});
 </script>
+<template>
+  <div class="container">
+    <p>Redirigiendo...</p>
+  </div>
+</template>

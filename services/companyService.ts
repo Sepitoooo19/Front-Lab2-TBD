@@ -18,7 +18,7 @@ export const getAllCompanies = async (): Promise<Company[]> => {
 // Salida : Objeto de la empresa
 export const getCompanyById = async (companyId: string) => {
   const config = useRuntimeConfig();
-  const token = localStorage.getItem('token'); // Obtén el token de localStorage
+  const token = localStorage.getItem('jwt'); // Obtén el token de localStorage
 
   if (!token) {
     throw new Error('No se encontró el token de autenticación');

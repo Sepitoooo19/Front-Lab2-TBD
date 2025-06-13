@@ -107,7 +107,7 @@ export const getTopPerformingDealers = async (): Promise<any[]> => {
 
 export const getAuthenticatedDealerAverageDeliveryTime = async (): Promise<number> => {
   const config = useRuntimeConfig();
-  const token = localStorage.getItem('token'); // Obtén el token JWT del almacenamiento local
+  const token = localStorage.getItem('jwt'); // Obtén el token JWT del almacenamiento local
 
   const response = await fetch(`${config.public.apiBase}/dealers/average-delivery-time-authenticated`, {
     headers: {
@@ -125,7 +125,7 @@ export const getAuthenticatedDealerAverageDeliveryTime = async (): Promise<numbe
 
 export const getAuthenticatedDealerDeliveryCount = async (): Promise<number> => {
   const config = useRuntimeConfig();
-  const token = localStorage.getItem('token'); // Obtén el token JWT del almacenamiento local
+  const token = localStorage.getItem('jwt'); // Obtén el token JWT del almacenamiento local
 
   const response = await fetch(`${config.public.apiBase}/dealers/delivery-count`, {
     headers: {
@@ -143,7 +143,7 @@ export const getAuthenticatedDealerDeliveryCount = async (): Promise<number> => 
 
 export const getAuthenticatedDealerProfile = async (): Promise<any> => {
   const config = useRuntimeConfig();
-  const token = localStorage.getItem('token');
+  const token = localStorage.getItem('jwt');
   
   try {
     const response = await fetch(`${config.public.apiBase}/dealers/me`, {

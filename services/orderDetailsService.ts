@@ -34,7 +34,7 @@ export const createOrderDetailsForLastOrder = async (paymentMethod: string, tota
 // Salida : Objeto de los detalles del pedido
 export const getOrderDetailsByOrderId = async (orderId: number): Promise<OrderDetails[]> => {
   const config = useRuntimeConfig();
-  const token = localStorage.getItem('authToken'); // Obtén el token del localStorage
+  const token = localStorage.getItem('jwt'); // Obtén el token del localStorage
 
   const response = await fetch(`${config.public.apiBase}/order-details/order/${orderId}`, {
     method: 'GET',

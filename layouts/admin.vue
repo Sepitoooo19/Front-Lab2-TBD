@@ -8,7 +8,7 @@
         <h1 class="text-2xl font-bold">Administrador - Sistema de Delivery</h1>
         <!-- Menú de navegación extendido -->
         <ul class="flex space-x-4">
-          <li><a href="/home-admin" class="hover:underline">Inicio</a></li>
+          <li><a href="/admin/dashboard" class="hover:underline">Inicio</a></li>
           <li><a href="/querys" class="hover:underline">Querys Complejas</a></li>
           <li><a href="/companies-food-volume" class="hover:underline">Vol. Comida</a></li>
           <li><a href="/clients" class="hover:underline">Clientes</a></li>

@@ -1,8 +1,9 @@
 import axios from "axios";
 
 export default defineNuxtPlugin(() => {
+  const config = useRuntimeConfig();
   const instance = axios.create({
-    baseURL: "http://localhost:8080", // URL base del backend
+    baseURL: config.public.apiBase || "http://localhost:8090", // URL base del backend
   });
 
   // Interceptor para incluir el token JWT en las solicitudes
@@ -17,6 +18,6 @@ export default defineNuxtPlugin(() => {
   return {
     provide: {
       axios: instance,
-    },
-  };
+  },
+};
 });

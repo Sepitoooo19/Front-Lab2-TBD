@@ -1,29 +1,26 @@
-// https://nuxt.com/docs/api/configuration/nuxt-config
-
-import { createPinia } from 'pinia';
-
 export default defineNuxtConfig({
   ssr: false,
-  css: ['~/assets/css/main.css'],
+  css: [
+    '~/assets/css/main.css',
+    'leaflet/dist/leaflet.css'
+  ],
   runtimeConfig: {
     public: {
-      apiBase: 'http://localhost:8090', // Cambia esto según la URL de tu backend
-    },
+      apiBase: process.env.NUXT_PUBLIC_API_BASE || 'http://localhost:8090',
+    }
   },
 
+  build: {
+    transpile: ['@vue-leaflet/vue-leaflet']
+  },
 
-  compatibilityDate: '2025-05-01',
+  compatibilityDate: '2025-05-15',
   devtools: { enabled: true },
-  postcss: {
-    plugins: {
-      tailwindcss: {},
-      autoprefixer: {},
-    },
-  },
-    modules: ['@nuxtjs/tailwindcss', '@pinia/nuxt'],
-  pages: true // Habilita la detección automática de rutas en la carpeta "pages"
+  modules: ['@nuxtjs/tailwindcss', '@pinia/nuxt'],
+  pages: true,
+
+  plugins: [
+    '~/plugins/axios.ts',
+    '~/plugins/vue3-toastify.ts'
+  ],
 })
-
-
-
-

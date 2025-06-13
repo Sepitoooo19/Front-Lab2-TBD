@@ -97,7 +97,7 @@ export async function getAuthenticatedClientProfile(): Promise<Client> {
   if (!token) throw new Error('No hay sesión activa.');
 
   // Este endpoint devuelve los datos básicos del usuario logueado
-  const res = await $fetch<any>('/users/user', {
+  const res = await $fetch<any>('/clients/me', {
     baseURL: config.public.apiBase,
     headers: { 'Authorization': `Bearer ${token}` }
   });
@@ -139,7 +139,7 @@ export async function getClient(): Promise<Client> {
   const token = localStorage.getItem('jwt');
   if (!token) throw new Error('No hay sesión activa.');
 
-  return await $fetch<Client>('/clients/user', {
+  return await $fetch<Client>('/clients/me', {
     baseURL: config.public.apiBase,
     headers: { 'Authorization': `Bearer ${token}` }
   });

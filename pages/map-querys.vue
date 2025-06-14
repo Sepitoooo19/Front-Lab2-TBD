@@ -107,7 +107,7 @@
     </div>
 
     <!-- Lista de resultados -->
-    <div v-if="deliveryPoints.length > 0" class="bg-white rounded-lg shadow-md p-6">
+    <div v-if="deliveryPoints.length > 0 && !loading" class="bg-white rounded-lg shadow-md p-6">
       <h3 class="text-lg font-semibold mb-4">
         Top 5 Puntos de Entrega Cercanos a {{ selectedCompany?.name }}
       </h3>
@@ -135,19 +135,19 @@
     </div>
 
     <!-- Mensaje cuando no hay resultados -->
-    <div v-if="searchPerformed && deliveryPoints.length === 0" class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+    <div v-if="searchPerformed && !loading && deliveryPoints.length === 0" class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
       <p class="text-yellow-800">No se encontraron puntos de entrega cercanos para la empresa seleccionada.</p>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, nextTick } from 'vue';
 import { LMap, LTileLayer, LMarker, LPopup } from '@vue-leaflet/vue-leaflet';
 import L from 'leaflet';
 import { parseWKTPoint } from '~/utils/wktUtils';
-import { getAllCompanies, getNearestDeliveryPoints } from '~/services/companyService';
-
+import { getAllCompanies } from '~/services/companyService';
+import { getNearestDeliveryPoints } from '~/services/mapQuerysService'; // Corregir el nombre del servicio
 
 // Middleware para verificar que sea admin
 definePageMeta({
@@ -165,7 +165,7 @@ const searchPerformed = ref(false);
 
 // Configuración del mapa
 const zoom = ref(13);
-const center = ref([-36.8485, -73.0524]); // Coordenadas de Concepción por defecto
+const center = ref([-36.8485, -73.0524]);
 const map = ref(null);
 
 // Empresa seleccionada
@@ -206,10 +206,11 @@ const loadCompanies = async () => {
  * Maneja el cambio de empresa seleccionada
  */
 const onCompanyChange = () => {
-  // Limpiar resultados anteriores
   deliveryPoints.value = [];
   companyMarker.value = null;
   searchPerformed.value = false;
+  center.value = [-36.8485, -73.0524];
+  zoom.value = 13;
 };
 
 /**
@@ -220,30 +221,39 @@ const findNearestPoints = async () => {
 
   loading.value = true;
   searchPerformed.value = true;
+  deliveryPoints.value = [];
 
   try {
-    // Obtener puntos cercanos usando el servicio
     const response = await getNearestDeliveryPoints(parseInt(selectedCompanyId.value));
     
-    // Procesar los datos
-    deliveryPoints.value = response.map(point => ({
-      ...point,
-      coordinates: parseWKTPoint(point.clientLocation)
-    }));
-
-    // Establecer marcador de empresa
-    if (selectedCompany.value && selectedCompany.value.ubication) {
-      const companyCoords = parseWKTPoint(selectedCompany.value.ubication);
-      companyMarker.value = companyCoords;
+    if (Array.isArray(response) && response.length > 0) {
+      const processedPoints = response.map(point => {
+        const coordinates = parseWKTPoint(point.clientLocation);
+        if (coordinates) {
+          return {
+            ...point,
+            coordinates: coordinates
+          };
+        }
+        return null;
+      }).filter(point => point !== null);
       
-      // Centrar el mapa en la empresa
-      center.value = [companyCoords[0], companyCoords[1]];
+      deliveryPoints.value = processedPoints;
       
-      // Ajustar zoom para mostrar todos los puntos
-      if (deliveryPoints.value.length > 0) {
-        await nextTick();
-        fitMapToPoints();
+      if (selectedCompany.value && selectedCompany.value.ubication) {
+        const companyCoords = parseWKTPoint(selectedCompany.value.ubication);
+        if (companyCoords) {
+          companyMarker.value = companyCoords;
+          center.value = [companyCoords[0], companyCoords[1]];
+          
+          if (deliveryPoints.value.length > 0) {
+            await nextTick();
+            fitMapToPoints();
+          }
+        }
       }
+    } else {
+      deliveryPoints.value = [];
     }
 
   } catch (error) {
@@ -262,12 +272,10 @@ const fitMapToPoints = () => {
 
   const bounds = L.latLngBounds();
   
-  // Agregar empresa
   if (companyMarker.value) {
     bounds.extend(companyMarker.value);
   }
   
-  // Agregar puntos de entrega
   deliveryPoints.value.forEach(point => {
     bounds.extend(point.coordinates);
   });
@@ -277,27 +285,23 @@ const fitMapToPoints = () => {
   }
 };
 
-// Cargar datos al montar el componente
 onMounted(() => {
   loadCompanies();
 });
 </script>
 
 <style scoped>
-/* Estilos para los marcadores personalizados */
 :deep(.custom-company-marker),
 :deep(.custom-delivery-marker) {
   background: transparent;
   border: none;
 }
 
-/* Mejoras visuales para la tabla */
 .table-auto th {
   position: sticky;
   top: 0;
 }
 
-/* Animación para el loading */
 .bg-blue-600:disabled {
   animation: pulse 2s infinite;
 }

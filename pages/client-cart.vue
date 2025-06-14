@@ -8,6 +8,9 @@ import { createOrder as createOrderService } from '~/services/ordersService';
 import { createOrderDetailsForLastOrder } from '~/services/orderDetailsService';
 import { getCompanyIdByProductId } from '~/services/productService';
 import { getPaymentMethodByCompanyId } from '~/services/paymentMethodService';
+import { getAuthenticatedClientProfile, updateClientProfile } from '~/services/clientService';
+import { wktToLatLng, latLngToWKT } from '~/utils/wktUtils';
+import MapPicker from '~/components/common/MapPicker.vue';
 import type { PaymentMethod } from '~/types/types';
 
 // Importa el store del carrito local
@@ -21,20 +24,13 @@ const selectedPaymentMethod = ref<string | null>(null); // Método de pago selec
 const isUrgent = ref<boolean>(false); // Estado para marcar como URGENTE
 const errorMessage = ref<string | null>(null);
 
-// Función para eliminar un producto del carrito
-// Metodo: removeFromCart
-// Entrada: productId
-// Salida: void
-const removeFromCart = (productId: number) => {
-  cartStore.removeProduct(productId);
-};
+// --- Ubicación del cliente ---
+const lat = ref<number | null>(null);
+const lng = ref<number | null>(null);
+const isLoadingUbicacion = ref(true);
 
-// Función para obtener el ID de la empresa por el ID del producto
-// Metodo: getCompanyIdByProductId y getPaymentMethodByCompanyId
-// Entrada: productId y companyId
-// Salida: companyId y paymentMethods
-// Descripción: Esta función obtiene el ID de la empresa asociada al primer producto del carrito y luego obtiene los métodos de pago disponibles para esa empresa.
 onMounted(async () => {
+  // Métodos de pago
   try {
     if (cartProducts.value.length === 0) {
       errorMessage.value = 'El carrito está vacío.';
@@ -50,13 +46,58 @@ onMounted(async () => {
     console.error('Error al cargar los métodos de pago:', error);
     errorMessage.value = 'Hubo un error al cargar los métodos de pago.';
   }
+
+  // Ubicación del cliente
+  try {
+    const profile = await getAuthenticatedClientProfile();
+    if (profile.ubication) {
+      const coords = wktToLatLng(profile.ubication);
+      if (coords) {
+        lng.value = coords.lng;
+        lat.value = coords.lat;
+      }
+    } else {
+      lat.value = -33.45;
+      lng.value = -70.65;
+    }
+  } catch (e) {
+    lat.value = -33.45;
+    lng.value = -70.65;
+  } finally {
+    isLoadingUbicacion.value = false;
+  }
 });
 
+// Funciones para actualizar lat/lng desde el MapPicker
+const onUpdateLat = (newLat: number) => { lat.value = newLat; };
+const onUpdateLng = (newLng: number) => { lng.value = newLng; };
+
+const actualizarUbicacion = async () => {
+  if (lat.value === null || lng.value === null) {
+    alert('Por favor, selecciona una ubicación en el mapa.');
+    return;
+  }
+  try {
+    const profile = await getAuthenticatedClientProfile();
+    await updateClientProfile(profile.id, {
+      name: profile.name,
+      rut: profile.rut,
+      email: profile.email,
+      phone: profile.phone,
+      ubication: latLngToWKT(lng.value, lat.value)
+    });
+    alert('Ubicación actualizada correctamente');
+  } catch (e) {
+    alert('Error al actualizar la ubicación');
+  }
+};
+
+// Función para eliminar un producto del carrito
+const removeFromCart = (productId: number) => {
+  cartStore.removeProduct(productId);
+};
+
 // Función para crear la orden y los detalles
-// Metodo: createOrderService y createOrderDetailsForLastOrder
-// Entrada: order y productIds
-// Salida: successMessage
-// Descripción: Esta función crea una orden y sus detalles. Muestra errores si no se selecciona un método de pago o si ocurre un error al crear la orden.
 const createOrder = async () => {
   try {
     if (!selectedPaymentMethod.value) {
@@ -93,8 +134,6 @@ definePageMeta({
 });
 </script>
 
-<!-- Template para el carrito del cliente, la tabla de productos y el formulario de pago -->
-
 <template>
   <div class="p-6">
     <h1 class="text-2xl font-bold mb-4">Carrito de Compras</h1>
@@ -127,6 +166,27 @@ definePageMeta({
 
     <div v-else class="mt-4 text-gray-500">
       No hay productos en el carrito.
+    </div>
+
+    <!-- Confirmación de ubicación -->
+    <div v-if="cartProducts.length > 0" class="mt-8">
+      <h2 class="text-lg font-semibold mb-2">Confirma tu ubicación de entrega</h2>
+      <div v-if="isLoadingUbicacion" class="text-gray-500 mb-4">Cargando mapa...</div>
+      <div v-else>
+        <MapPicker
+          :lat="lat"
+          :lng="lng"
+          @update:lat="onUpdateLat"
+          @update:lng="onUpdateLng"
+        />
+        <button
+          class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 mt-4"
+          @click="actualizarUbicacion"
+          type="button"
+        >
+          Guardar ubicación de entrega
+        </button>
+      </div>
     </div>
 
     <div v-if="cartProducts.length > 0" class="mt-4">

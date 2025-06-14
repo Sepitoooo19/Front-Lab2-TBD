@@ -1,5 +1,5 @@
 export default defineNuxtRouteMiddleware((to, from) => {
-  const token = localStorage.getItem('token'); // Verifica si el token existe
+  const token = localStorage.getItem('jwt'); // Verifica si el token existe
   const role = localStorage.getItem('role'); // Obtén el rol del usuario desde el localStorage
 
   console.log('Ruta actual:', to.path);
@@ -12,9 +12,9 @@ export default defineNuxtRouteMiddleware((to, from) => {
 
   // Define las rutas permitidas para cada rol
   const allowedRoutes: Record<string, string[]> = {
-    CLIENT: ['/home-client', '/client-orders', '/cart'],
-    ADMIN: ['/home-admin', '/clients', '/orders', '/dealers', '/unassigned-orders', '/companies-admin', '/querys'],
-    DEALER: ['/home-dealer', '/unassigned-orders-dealer', '/profile-dealer'],
+    CLIENT: ['/dashboard', '/client-orders', '/client-cart', '/profile'],
+    ADMIN: ['/admin/dashboard', '/clients', '/orders', '/dealers', '/unassigned-orders', '/companies-admin', '/querys'],
+    DEALER: ['/dealer/dashboard', '/unassigned-orders-dealer', '/profile-dealer'],
   };
 
 
@@ -32,9 +32,9 @@ export default defineNuxtRouteMiddleware((to, from) => {
   if (!isAllowed) {
     // Redirige al inicio correspondiente según el rol
     const redirectHome: Record<string, string> = {
-      CLIENT: '/home-client',
-      ADMIN: '/home-admin',
-      DEALER: '/home-dealer',
+      CLIENT: '/dashboard',
+      ADMIN: '/admin/dashboard',
+      DEALER: '/dealer/dashboard',
     };
     console.log('Redirigiendo al inicio correspondiente porque la ruta no está permitida.');
     return navigateTo(redirectHome[role] || '/login');

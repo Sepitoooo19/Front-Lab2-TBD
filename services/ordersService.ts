@@ -83,7 +83,7 @@ export const deleteClientById = async (id: number) => {
 // Salida : Lista de órdenes del cliente
 export const getOrdersByClient = async (): Promise<Order[]> => {
   const config = useRuntimeConfig();
-  const token = localStorage.getItem('token'); // Obtén el token del localStorage
+  const token = localStorage.getItem('jwt'); // Obtén el token del localStorage
 
   if (!token) {
     throw new Error('No se encontró el token de autenticación');
@@ -161,7 +161,7 @@ export const getDeliveredOrdersByCompanyId = async (companyId: number) => {
 // Salida : Lista de productos del pedido
 export const getProductsByOrderId = async (orderId: number): Promise<Product[]> => {
   const config = useRuntimeConfig();
-  const token = localStorage.getItem('authToken'); // Obtén el token de localStorage
+  const token = localStorage.getItem('jwt'); // Obtén el token de localStorage
 
   const response = await fetch(`${config.public.apiBase}/orders/${orderId}/products`, {
     method: 'GET',
@@ -182,13 +182,13 @@ export const getProductsByOrderId = async (orderId: number): Promise<Product[]> 
 // Entrada : objeto del pedido, lista de ids de productos y token de autenticación
 // Salida : pedido creado
 export const createOrder = async (order: { orderDate: string; status: string }, productIds: string): Promise<void> => {
-  const token = localStorage.getItem('token'); // Obtén el token del localStorage
+  const token = localStorage.getItem('jwt'); // Obtén el token del localStorage
 
   if (!token) {
     throw new Error('No se encontró el token de autenticación');
   }
 
-  const response = await fetch(`http://localhost:8090/orders/create?productIds=${productIds}`, {
+  const response = await fetch(`${config.public.apiBase}/orders/create?productIds=${productIds}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -207,7 +207,7 @@ export const createOrder = async (order: { orderDate: string; status: string }, 
 // Salida : dirección del cliente
 export const getClientAddress = async (): Promise<string> => {
   const config = useRuntimeConfig();
-  const token = localStorage.getItem('token'); // Cambia 'authToken' por 'token'
+  const token = localStorage.getItem('jwt');
 
   if (!token) {
     console.error('No se encontró el token de autenticación');
@@ -249,7 +249,7 @@ export const getTopSpender = async (): Promise<TopSpender> => {
 // Entrada : id del pedido y token de autenticación
 // Salida : Ninguna
 export const markOrderAsUrgent = async (orderId: number): Promise<void> => {
-  const token = localStorage.getItem('token'); // Obtén el token del localStorage
+  const token = localStorage.getItem('jwt'); // Obtén el token del localStorage
 
   if (!token) {
     throw new Error('No se encontró el token de autenticación');
@@ -272,13 +272,13 @@ export const markOrderAsUrgent = async (orderId: number): Promise<void> => {
 // Entrada : token de autenticación
 // Salida : lista de órdenes del dealer
 export const getOrdersByDealer = async () => {
-  const token = localStorage.getItem('token'); // Obtén el token del localStorage
+  const token = localStorage.getItem('jwt'); // Obtén el token del localStorage
 
   if (!token) {
     throw new Error('No se encontró el token de autenticación');
   }
 
-  const response = await fetch(`http://localhost:8090/orders/dealer/orders`, {
+  const response = await fetch(`${config.public.apiBase}/orders/dealer/orders`, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json',
@@ -297,7 +297,7 @@ export const getOrdersByDealer = async () => {
 // Entrada : token de autenticación
 // Salida : objeto de la orden activa del dealer
 export const getActiveOrderByDealer = async () => {
-  const token = localStorage.getItem('token');
+  const token = localStorage.getItem('jwt');
 
   if (!token) {
     throw new Error('No se encontró el token de autenticación');
@@ -328,7 +328,7 @@ export const getActiveOrderByDealer = async () => {
 // Entrada : id del pedido y objeto con el nuevo estado
 // Salida : objeto del pedido actualizado
 export const updateOrderStatus = async (orderId: number, body: { status: string, deliveryDate?: null }) => {
-  const token = localStorage.getItem('token');
+  const token = localStorage.getItem('jwt');
   
   if (!token) {
     throw new Error('No se encontró el token de autenticación');
@@ -359,7 +359,7 @@ export const updateOrderStatus = async (orderId: number, body: { status: string,
 
 export const getOrdersByDealerDto = async (): Promise<OrderTotalProductsDTO[]> => {
   const config = useRuntimeConfig();
-  const token = localStorage.getItem('token'); // Obtén el token JWT del almacenamiento local
+  const token = localStorage.getItem('jwt'); // Obtén el token JWT del almacenamiento local
 
   const response = await fetch(`${config.public.apiBase}/orders/dealer/dto/orders`, {
     headers: {
@@ -376,7 +376,7 @@ export const getOrdersByDealerDto = async (): Promise<OrderTotalProductsDTO[]> =
 
 export const getActiveOrderNameAddresDTOByDealer = async (): Promise<OrderNameAddressDTO> => {
   const config = useRuntimeConfig();
-  const token = localStorage.getItem('token'); // Obtén el token JWT del almacenamiento local
+  const token = localStorage.getItem('jwt'); // Obtén el token JWT del almacenamiento local
 
   const response = await fetch(`${config.public.apiBase}/orders/dealer/dto/active-order`, {
     headers: {
@@ -393,7 +393,7 @@ export const getActiveOrderNameAddresDTOByDealer = async (): Promise<OrderNameAd
 
 export const getFailedOrdersByClient = async (): Promise<Order[]> => {
   const config = useRuntimeConfig();
-  const token = localStorage.getItem('token');
+  const token = localStorage.getItem('jwt');
 
   if (!token) {
     throw new Error('No se encontró el token de autenticación');

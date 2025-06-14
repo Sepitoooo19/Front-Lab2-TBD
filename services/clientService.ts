@@ -1,26 +1,35 @@
+import { useRuntimeConfig } from '#app';
+import type { Client } from '~/types/types'; // Asegúrate que tu tipo Client esté bien definido
+
 const config = useRuntimeConfig();
 
-// Funcion para obtener todos los clientes
-// Entrada : Ninguna
-// Salida : Lista de clientes
+/**
+ * Obtiene todos los clientes.
+ * Entrada : Ninguna
+ * Salida : Lista de clientes
+ */
 export const getAllClients = async () => {
   const response = await fetch(`${config.public.apiBase}/clients`);
   if (!response.ok) throw new Error("Error al obtener los clientes");
   return await response.json();
 };
 
-// Funcion para obtener un cliente por su id
-// Entrada : id del cliente
-// Salida : Objeto del cliente
+/**
+ * Obtiene un cliente por su id.
+ * Entrada : id del cliente
+ * Salida : Objeto del cliente
+ */
 export const getClientById = async (id: number) => {
   const response = await fetch(`${config.public.apiBase}/clients/${id}`);
   if (!response.ok) throw new Error("Error al obtener el cliente");
   return await response.json();
 };
 
-// Funcion para crear un cliente
-// Entrada : Objeto del cliente
-// Salida : Objeto del cliente creado
+/**
+ * Crea un cliente.
+ * Entrada : Objeto del cliente
+ * Salida : Objeto del cliente creado
+ */
 export const createClient = async (client: any) => {
   const response = await fetch(`${config.public.apiBase}/clients`, {
     method: "POST",
@@ -33,9 +42,11 @@ export const createClient = async (client: any) => {
   return await response.json();
 };
 
-// Funcion para actualizar un cliente
-// Entrada : id del cliente y objeto del cliente
-// Salida : Objeto del cliente actualizado
+/**
+ * Actualiza un cliente.
+ * Entrada : id del cliente y objeto del cliente
+ * Salida : Objeto del cliente actualizado
+ */
 export const updateClient = async (id: number, client: any) => {
   const response = await fetch(`${config.public.apiBase}/clients/${id}`, {
     method: "PUT",
@@ -48,9 +59,11 @@ export const updateClient = async (id: number, client: any) => {
   return await response.json();
 };
 
-// Funcion para eliminar un cliente por su id
-// Entrada : id del cliente
-// Salida : Objeto del cliente eliminado
+/**
+ * Elimina un cliente por su id.
+ * Entrada : id del cliente
+ * Salida : Objeto del cliente eliminado
+ */
 export const deleteClientById = async (id: number) => {
   const response = await fetch(`${config.public.apiBase}/clients/${id}`, {
     method: "DELETE",
@@ -59,9 +72,11 @@ export const deleteClientById = async (id: number) => {
   return await response.json();
 };
 
-// Funcion para obtener el nombre de un cliente por su id
-// Entrada : id del cliente
-// Salida : Nombre del cliente
+/**
+ * Obtiene el nombre de un cliente por su id.
+ * Entrada : id del cliente
+ * Salida : Nombre del cliente
+ */
 export const getNameByClientId = async (clientId: number): Promise<string> => {
   const config = useRuntimeConfig();
   const response = await fetch(`${config.public.apiBase}/clients/name/${clientId}`);
@@ -73,4 +88,59 @@ export const getNameByClientId = async (clientId: number): Promise<string> => {
   return await response.text(); // Usa text() en lugar de json()
 };
 
+/**
+ * Obtiene el perfil del CLIENTE autenticado actualmente.
+ * Llama a un endpoint genérico de usuario y lo trata como Cliente.
+ */
+export async function getAuthenticatedClientProfile(): Promise<Client> {
+  const token = localStorage.getItem('jwt');
+  if (!token) throw new Error('No hay sesión activa.');
 
+  // Este endpoint devuelve los datos básicos del usuario logueado
+  const res = await $fetch<any>('/clients/me', {
+    baseURL: config.public.apiBase,
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+
+  // Aquí asumimos que el backend devuelve todos los campos necesarios para un Cliente
+  // y los mapeamos a nuestro tipo Client del frontend.
+  return {
+    id: res.id,
+    name: res.name,
+    rut: res.rut,
+    email: res.email,
+    phone: res.phone,
+    address: res.address,
+    ubication: res.ubication,
+  };
+}
+
+/**
+ * Actualiza el perfil de un CLIENTE por su ID.
+ * Llama al endpoint específico de /clients/{id}
+ */
+export async function updateClientProfile(id: number, profileData: Partial<Client>): Promise<Client> {
+  const token = localStorage.getItem('jwt');
+  if (!token) throw new Error('No hay sesión activa.');
+
+  return await $fetch<Client>(`/clients/${id}`, {
+    baseURL: config.public.apiBase,
+    method: 'PUT',
+    body: profileData,
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+}
+
+/**
+ * Obtiene el perfil del usuario autenticado.
+ * Llama a un endpoint genérico de usuario.
+ */
+export async function getClient(): Promise<Client> {
+  const token = localStorage.getItem('jwt');
+  if (!token) throw new Error('No hay sesión activa.');
+
+  return await $fetch<Client>('/clients/me', {
+    baseURL: config.public.apiBase,
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+}

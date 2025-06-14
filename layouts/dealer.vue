@@ -8,7 +8,7 @@
         <h1 class="text-2xl font-bold">Repartidor - Sistema de Delivery</h1>
         <!-- Menú de navegación específico -->
         <ul class="flex space-x-4">
-          <li><a href="/home-dealer" class="hover:underline">Inicio</a></li>
+          <li><a href="/dealer/dashboard" class="hover:underline">Inicio</a></li>
           <li><a href="/profile-dealer" class="hover:underline">Perfil</a></li>
           <li><a href="/actual-order" class="hover:underline">Orden actual</a></li>
           <li><a href="/unassigned-orders-dealer" class="hover:underline">Órdenes sin asignar</a></li>

@@ -5,6 +5,7 @@ export interface Client {
   email: string;
   phone: string;
   address: string;
+  ubication: string
 }
 
 export interface Order {

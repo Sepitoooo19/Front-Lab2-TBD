@@ -7,6 +7,7 @@ export default {
     "./plugins/**/*.{js,ts}",
     "./app.vue",
     "./error.vue",
+    "./assets/css/**/*.{css,scss}",
   ],
   theme: {
     extend: {
@@ -23,4 +24,3 @@ export default {
   },
   plugins: [],
 }
-

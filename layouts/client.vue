@@ -8,7 +8,8 @@
         <h1 class="text-2xl font-bold">Cliente - Sistema de Delivery</h1>
         <!-- Menú de navegación -->
         <ul class="flex space-x-4">
-          <li><a href="/home-client" class="hover:underline">Inicio</a></li>
+          <li><a href="/dashboard" class="hover:underline">Inicio</a></li>
+          <li><a href="/profile" class="hover:underline">Mi Perfil</a></li>
           <li><a href="/notifications" class="hover:underline">Notificaciones</a></li>
           <li><a href="/client-order" class="hover:underline">Realizar pedido</a></li>
           <li><a href="/client-orders" class="hover:underline">Mis Pedidos</a></li>

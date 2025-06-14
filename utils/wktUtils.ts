@@ -12,6 +12,17 @@ export function wktToLatLng(wkt: string): { lng: number; lat: number } | null {
   return null;
 }
 
+// Función nueva que necesitas para el mapa
+export function parseWKTPoint(wkt: string): [number, number] | null {
+  const match = wkt.match(/POINT\(([^ ]+) ([^ ]+)\)/);
+  if (match) {
+    const lng = parseFloat(match[1]);
+    const lat = parseFloat(match[2]);
+    return [lat, lng]; // Leaflet usa [lat, lng] no [lng, lat]
+  }
+  return null;
+}
+
 export function wktToLatLngArray(wkt: string): Array<{ lng: number; lat: number }> | null {
   const match = wkt.match(/POINT\(([^ ]+) ([^ ]+)\)/);
   if (match) {

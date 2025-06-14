@@ -97,4 +97,13 @@ export interface OrderNameAddressDTO {
       address: string // Dirección del cliente
 }
 
+export interface NearestDeliveryPointDTO {
+  clientId: number;
+  clientName: string;
+  clientAddress: string;
+  clientLocation: string; // WKT del punto
+  companyName: string;
+  distanceMeters: number;
+}
+
 

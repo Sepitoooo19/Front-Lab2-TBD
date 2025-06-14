@@ -1,6 +1,6 @@
 const config = useRuntimeConfig();
  
-import type { Company } from '~/types/types';
+import type { Company , NearestDeliveryPointDTO} from '~/types/types';
 
 // Funcion para obtener todas las empresas
 // Entrada : Ninguna
@@ -70,5 +70,17 @@ export const getCompaniesByDeliveredFoodVolume = async (): Promise<any[]> => {
   if (!response.ok) {
     throw new Error('Error al obtener las empresas por volumen de comida entregada');
   }
+  return await response.json();
+};
+
+
+export const getNearestDeliveryPoints = async (companyId: number): Promise<NearestDeliveryPointDTO[]> => {
+  const config = useRuntimeConfig();
+  const response = await fetch(`${config.public.apiBase}/companies/nearest/${companyId}`);
+  
+  if (!response.ok) {
+    throw new Error('Error al obtener los puntos de entrega cercanos');
+  }
+  
   return await response.json();
 };

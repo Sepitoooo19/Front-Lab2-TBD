@@ -35,7 +35,6 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits(['update:lat', 'update:lng'])
 
-// Convierte props a números de forma segura
 const toNumber = (value: number | string | null): number | null => {
   if (value === null) return null
   const num = typeof value === 'string' ? parseFloat(value) : value
@@ -45,9 +44,8 @@ const toNumber = (value: number | string | null): number | null => {
 const zoom = ref(13)
 const isMounted = ref(false)
 
-// Aquí invertimos: props.lat es longitud, props.lng es latitud
-const markerLat = ref<number | null>(toNumber(props.lng)) // latitud
-const markerLng = ref<number | null>(toNumber(props.lat)) // longitud
+const markerLat = ref<number | null>(toNumber(props.lat)) // latitud
+const markerLng = ref<number | null>(toNumber(props.lng)) // longitud
 const center = ref<LatLngTuple>([
   markerLat.value !== null ? markerLat.value : 0,
   markerLng.value !== null ? markerLng.value : 0
@@ -56,12 +54,9 @@ const center = ref<LatLngTuple>([
 const tileUrl = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
 const tileAttribution = '&copy; OpenStreetMap contributors'
 
-// Actualizar center cuando cambian los props
 watch(() => [props.lat, props.lng], ([newLat, newLng]) => {
-  // props.lat es longitud, props.lng es latitud
-  const lng = toNumber(newLat)
-  const lat = toNumber(newLng)
-
+  const lat = toNumber(newLat)
+  const lng = toNumber(newLng)
   if (lat !== null && lng !== null) {
     markerLat.value = lat
     markerLng.value = lng

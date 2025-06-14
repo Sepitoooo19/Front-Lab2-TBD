@@ -76,8 +76,8 @@ onMounted(async () => {
       const coords = wktToLatLng(profile.ubication);
       if (coords) {
         // se invierte lat/lng porque WKT usa lng primero
-        lng.value = coords.lat;
-        lat.value = coords.lng;
+        lng.value = coords.lng;
+        lat.value = coords.lat;
       }
     } else {
       // Ubicación por defecto si no hay una guardada (Santiago)

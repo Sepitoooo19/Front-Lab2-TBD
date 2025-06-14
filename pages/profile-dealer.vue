@@ -28,7 +28,7 @@ onMounted(async () => {
   try {
     const dealerData = await getAuthenticatedDealerProfile();
 
-    // Manejo seguro del rating
+    // Manejo seguro del rating a
     const ratingValue = typeof dealerData.rating === 'number' 
       ? dealerData.rating.toFixed(1)
       : 'Sin calificaciones';

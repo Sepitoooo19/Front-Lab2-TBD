@@ -1,61 +1,67 @@
-<!-- En esta page se muestra la orden activa del repartidor -->
+<!-- En esta page se muestra la orden activa del repartidor, incluyendo el mapa de entrega -->
 
 <script setup lang="ts">
 // Importa los módulos necesarios
 import { ref, onMounted } from 'vue';
 import { getActiveOrderNameAddresDTOByDealer, updateOrderStatus } from '~/services/ordersService';
-import type { Order, OrderNameAddressDTO  } from '~/types/types';
-// Se define una referencia reactiva para almacenar la orden activa
-const order = ref<OrderNameAddressDTO  | null>(null);
+import { getClientById } from '~/services/clientService';
+import { wktToLatLng } from '~/utils/wktUtils';
+import MapPicker from '~/components/common/MapPicker.vue';
+import type { OrderNameAddressDTO, Client } from '~/types/types';
 
+const order = ref<OrderNameAddressDTO | null>(null);
+const clientUbication = ref<{ lat: number; lng: number } | null>(null);
+const isLoadingUbication = ref(false);
 
-// Función para cargar la orden activa del repartidor
-// Metodo: getActiveOrderByDealer
-// Entrada: token (localStorage)
-// Salida: order
-// Descripción: Esta función obtiene la orden activa del repartidor y la asigna a la variable 'order'.
+// Función para cargar la orden activa y la ubicación del cliente
 const loadActiveOrder = async () => {
   try {
+    order.value = null;
+    clientUbication.value = null;
     const activeOrder = await getActiveOrderNameAddresDTOByDealer();
     order.value = activeOrder;
+
+    // Si hay orden y clientId, obtener la ubicación del cliente
+    if (activeOrder && activeOrder.clientId) {
+      isLoadingUbication.value = true;
+      const client: Client = await getClientById(activeOrder.clientId);
+      if (client && client.ubication) {
+        const coords = wktToLatLng(client.ubication);
+        if (coords) {
+          clientUbication.value = { lat: coords.lat, lng: coords.lng };
+        }
+      }
+      isLoadingUbication.value = false;
+    }
   } catch (err) {
-    console.error('Error al cargar la orden activa:', err);
+    console.error('Error al cargar la orden activa o la ubicación:', err);
     order.value = null;
+    clientUbication.value = null;
+    isLoadingUbication.value = false;
   }
 };
 
 // Función para actualizar el estado de la orden
-// Metodo: updateOrderStatus
-// Entrada: orderId, body (status y deliveryDate)
-// Salida: successMessage
-// Descripción: Esta función actualiza el estado de la orden activa. Si el nuevo estado es 'FALLIDA', se asigna null a la fecha de entrega.
 const updateOrder = async (newStatus: string) => {
   if (!order.value) return;
   try {
     const body: any = { status: newStatus };
-    
-    // Si es un fallo, asignamos null a la fecha de entrega
     if (newStatus === 'FALLIDA') {
       body.deliveryDate = null;
     }
-    
     await updateOrderStatus(order.value.id, body);
-    const successMessage = newStatus === 'ENTREGADO' 
-      ? 'Orden entregada exitosamente.' 
+    const successMessage = newStatus === 'ENTREGADO'
+      ? 'Orden entregada exitosamente.'
       : 'La orden fue marcada como fallida.';
     alert(successMessage);
     order.value = null;
+    clientUbication.value = null;
   } catch (err) {
     console.error(`Error al actualizar el estado a ${newStatus}:`, err);
     alert(`Error: ${(err as Error).message}`);
   }
 };
 
-// Funciones para manejar los botones de entrega y fallo, con validacion
-// Metodo: updateOrder
-// Entrada: Status
-// Salida: successMessage
-// Descripción: Estas funciones manejan la lógica de los botones "Entregar" y "Emergencia" respectivamente.
 const deliverOrder = () => {
   const confirmed = confirm("¿Estás seguro de que deseas marcar la orden como ENTREGADA?");
   if (confirmed) {
@@ -79,8 +85,6 @@ definePageMeta({
 });
 </script>
 
-<!-- En este template se muestra la orden activa del repartidor, los detalles de la orden y los botones para entregar o marcar como fallida -->
-
 <template>
   <div class="p-6">
     <h1 class="text-2xl font-bold mb-4">Orden Activa</h1>
@@ -92,9 +96,25 @@ definePageMeta({
       <p><strong>Id Cliente:</strong> {{ order.clientId || 'N/A' }}</p>
       <p><strong>Nombre Cliente:</strong> {{ order.nameClient || 'N/A' }}</p>
       <p><strong>Dirección:</strong> {{ order.address || 'N/A' }}</p>
-      <!-- <p><strong>Metodo de Pago:</strong> {{ order.paymentMethod || 'N/A' }}</p> -->
+      <p v-if="clientUbication">
+        <strong>Coordenadas:</strong>
+        Latitud: {{ clientUbication.lat }}, Longitud: {{ clientUbication.lng }}
+      </p>
 
-      
+      <!-- Mapa de ubicación de entrega -->
+      <div class="mt-6">
+        <h3 class="font-semibold mb-2">Ubicación de entrega</h3>
+        <div v-if="isLoadingUbication" class="text-gray-500 mb-2">Cargando mapa...</div>
+        <div v-else-if="clientUbication">
+          <MapPicker
+            :lat="clientUbication.lat"
+            :lng="clientUbication.lng"
+            :draggable="false"
+          />
+        </div>
+        <div v-else class="text-gray-500 mb-2">No se pudo obtener la ubicación del cliente.</div>
+      </div>
+
       <div class="mt-4 flex space-x-4">
         <button
           class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
@@ -115,8 +135,3 @@ definePageMeta({
     </div>
   </div>
 </template>
-
-
-
-<style scoped> 
-</style>

@@ -65,7 +65,7 @@ const form = ref({
   rut: '',
   email: '',
   phone: '',
-  location: '',
+  ubication: '',
   vehicle: '',
   plate: '',
 });
@@ -93,25 +93,36 @@ const handleRegister = async () => {
 
   // 2. Añade la ubicación si el rol es CLIENT o DEALER
   if (form.value.role === 'CLIENT' || form.value.role === 'DEALER') {
-    // Validar que se haya seleccionado una ubicación
+    // Depuración: muestra lat/lng actuales
+    console.log('[Registro] Latitud seleccionada:', lat.value);
+    console.log('[Registro] Longitud seleccionada:', lng.value);
+
     if (lat.value === null || lng.value === null) {
       registerError.value = 'Debes seleccionar una ubicación en el mapa.';
       loading.value = false;
       return;
     }
-    payload.location = latLngToWKT(lat.value, lng.value);
-    
+
+    const wkt = latLngToWKT(lng.value, lat.value);
+    // Depuración: muestra el WKT generado
+    console.log('[Registro] WKT generado:', wkt);
+
+    payload.ubication = wkt;
+
     // Añadir otros campos comunes a CLIENT y DEALER
     payload.rut = form.value.rut;
     payload.email = form.value.email;
     payload.phone = form.value.phone;
   }
-  
+
   // 3. Añade campos específicos solo para DEALER
   if (form.value.role === 'DEALER') {
     payload.vehicle = form.value.vehicle;
     payload.plate = form.value.plate;
   }
+
+  // Depuración: muestra el payload final antes de enviar
+  console.log('[Registro] Payload final enviado:', payload);
 
   // 4. Enviar los datos al servicio
   try {

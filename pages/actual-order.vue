@@ -101,7 +101,7 @@ definePageMeta({
         Latitud: {{ clientUbication.lat }}, Longitud: {{ clientUbication.lng }}
       </p>
 
-      <!-- Mapa de ubicación de entrega -->
+      <!-- Mapa de ubicación de entrega a -->
       <div class="mt-6">
         <h3 class="font-semibold mb-2">Ubicación de entrega</h3>
         <div v-if="isLoadingUbication" class="text-gray-500 mb-2">Cargando mapa...</div>

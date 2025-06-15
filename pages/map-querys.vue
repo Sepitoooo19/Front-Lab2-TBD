@@ -32,6 +32,15 @@
           <span v-if="loading">Buscando...</span>
           <span v-else>Buscar Puntos Cercanos</span>
         </button>
+        <button 
+            @click="findFarthestPoints"
+            :disabled="loading"
+            class="bg-orange-600 text-white px-4 py-2 rounded-md hover:bg-orange-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+          >
+            <span v-if="loading">Buscando...</span>
+            <span v-else>Ver Puntos Más Lejanos</span>
+          </button>
+        
       </div>
 
 
@@ -94,6 +103,20 @@
               </div>
             </LPopup>
           </LMarker>
+          <LMarker
+            v-for="(point, index) in farthestPoints"
+            :key="'far-'+index"
+            :lat-lng="point.coordinates"
+            :icon="farthestIcon"
+            >
+            <LPopup>
+                <div class="text-center">
+                <h4 class="font-bold text-orange-600">Punto más lejano</h4>
+                <p class="text-sm">Empresa: {{ point.companyName }}</p>
+                <p class="text-xs text-gray-600">Coordenadas: {{ point.pointText }}</p>
+                </div>
+            </LPopup>
+            </LMarker>
         </LMap>
       </div>
 
@@ -106,6 +129,10 @@
         <div class="flex items-center gap-2">
           <div class="w-4 h-4 bg-green-500 rounded-full"></div>
           <span class="text-sm">Puntos de Entrega</span>
+        </div>
+        <div v-if="farthestPoints.length > 0" class="flex items-center gap-2">
+            <div class="w-4 h-4 bg-orange-500 rounded-full"></div>
+            <span class="text-sm">Puntos Lejanos</span>
         </div>
       </div>
     </div>
@@ -137,15 +164,49 @@
         </table>
       </div>
     </div>
-
-    <!-- Mensaje cuando no hay resultados -->
-    <div v-if="searchPerformed && !loading && deliveryPoints.length === 0" class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-        <p class="text-yellow-800">
-            {{ selectedCompany?.ubication 
-            ? 'No se encontraron puntos de entrega cercanos para la empresa seleccionada'
-            : 'La empresa seleccionada no tiene ubicación registrada' }}
-        </p>
+    <div v-if="farthestPoints.length > 0 && !loading" class="bg-white rounded-lg shadow-md p-6">
+        <h3 class="text-lg font-semibold mb-4">
+        Puntos de Entrega Más Lejanos por Empresa
+        </h3>
+        
+        <div class="overflow-x-auto">
+        <table class="min-w-full table-auto">
+            <thead class="bg-gray-50">
+            <tr>
+                <th class="px-4 py-2 text-left text-sm font-medium text-gray-700">#</th>
+                <th class="px-4 py-2 text-left text-sm font-medium text-gray-700">Empresa</th>
+                <th class="px-4 py-2 text-left text-sm font-medium text-gray-700">Coordenadas</th>
+                <th class="px-4 py-2 text-left text-sm font-medium text-gray-700">Acciones</th>
+            </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200">
+            <tr 
+                v-for="(point, index) in farthestPoints" 
+                :key="`far-${index}`" 
+                class="hover:bg-gray-50"
+                :class="{ 'bg-blue-50': selectedCompanyId && point.companyId === parseInt(selectedCompanyId) }"
+            >
+                <td class="px-4 py-2 text-sm text-gray-900">{{ index + 1 }}</td>
+                <td class="px-4 py-2 text-sm font-medium text-gray-900">
+                {{ point.companyName }}
+                </td>
+                <td class="px-4 py-2 text-sm text-gray-700">
+                {{ point.pointText }}
+                </td>
+                <td class="px-4 py-2 text-sm text-gray-700">
+                <button 
+                    v-if="point.companyId"
+                    @click="selectedCompanyId = point.companyId.toString(); onCompanyChange()"
+                    class="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                >
+                    Ver Empresa
+                </button>
+                </td>
+            </tr>
+            </tbody>
+        </table>
         </div>
+    </div>
   </div>
 </template>
 
@@ -156,6 +217,7 @@ import L from 'leaflet';
 import { parseWKTPoint } from '~/utils/wktUtils';
 import { getAllCompanies } from '~/services/companyService';
 import { getNearestDeliveryPoints } from '~/services/mapQueryService';
+import { getFarthestDeliveryPoints } from '~/services/mapQueryService';
 
 // Estados reactivos
 const companies = ref([]);
@@ -165,6 +227,8 @@ const loading = ref(false);
 const searchPerformed = ref(false);
 const isMounted = ref(false);
 const mapReady = ref(false);
+const showFarthestPoints = ref(false);
+const farthestPoints = ref([]);
 
 // Configuración del mapa
 const zoom = ref(13);
@@ -225,6 +289,7 @@ const loadCompanies = async () => {
 // Maneja el cambio de empresa seleccionada
 const onCompanyChange = async () => {
   if (!isMounted.value) return;
+  showFarthestPoints.value = false;
   
   loading.value = true;
   clearMapMarkers();
@@ -321,6 +386,134 @@ const findNearestPoints = async () => {
   }
 };
 
+const findFarthestPoints = async () => {
+  try {
+    console.log('[DEBUG] Iniciando findFarthestPoints');
+    loading.value = true;
+    clearMapMarkers();
+    deliveryPoints.value = [];
+    farthestPoints.value = [];
+    searchPerformed.value = true;
+    showFarthestPoints.value = true;
+
+    console.log('[DEBUG] Llamando a getFarthestDeliveryPoints...');
+    const response = await getFarthestDeliveryPoints();
+    console.log('[DEBUG] Respuesta cruda del backend:', response);
+    
+    if (Array.isArray(response) && response.length > 0) {
+      console.log('[DEBUG] Procesando puntos lejanos...');
+      
+      const processedPoints = response.map((item, index) => {
+        console.log(`[DEBUG] Procesando item ${index}:`, item);
+        
+        if (!item.company_name || !item.farthest_delivery_point) {
+          console.warn(`[WARN] Item ${index} no tiene los campos requeridos`, item);
+          return null;
+        }
+        
+        try {
+          const coordinates = parseWKTPoint(item.farthest_delivery_point);
+          console.log(`[DEBUG] Coordenadas parseadas para item ${index}:`, coordinates);
+          
+          if (!coordinates) {
+            console.warn(`[WARN] No se pudo parsear coordenadas para item ${index}`);
+            return null;
+          }
+          
+          const companyId = companies.value.find(c => c.name === item.company_name)?.id;
+          console.log(`[DEBUG] Company ID encontrado para ${item.company_name}:`, companyId);
+          
+          return {
+            companyName: item.company_name,
+            coordinates,
+            pointText: item.farthest_delivery_point,
+            companyId
+          };
+        } catch (e) {
+          console.error(`[ERROR] Error procesando item ${index}:`, e);
+          return null;
+        }
+      }).filter(Boolean);
+      
+      console.log('[DEBUG] Puntos procesados:', processedPoints);
+      farthestPoints.value = processedPoints;
+
+      // Si hay una empresa seleccionada, resaltar su punto lejano
+      if (selectedCompanyId.value) {
+        const selectedCompany = companies.value.find(c => c.id === parseInt(selectedCompanyId.value));
+        if (selectedCompany) {
+          const companyFarPoint = farthestPoints.value.find(p => p.companyName === selectedCompany.name);
+          if (companyFarPoint) {
+            // Centrar en el punto lejano de la empresa seleccionada
+            center.value = companyFarPoint.coordinates;
+            zoom.value = 14;
+          }
+        }
+      } else {
+        // Centrar el mapa para mostrar todos los puntos lejanos
+        if (farthestPoints.value.length > 0) {
+          center.value = farthestPoints.value[0].coordinates;
+          zoom.value = 10;
+        }
+        
+      }} else {
+      console.warn('[WARN] Respuesta vacía o no es array');
+    }
+  } catch (error) {
+    console.error('[ERROR] Error en findFarthestPoints:', error);
+  } finally {
+    loading.value = false;
+    console.log('[DEBUG] Búsqueda finalizada');
+  }
+};
+
+const fitMapToFarthestPoints = () => {
+  if (!map.value?.leafletObject || farthestPoints.value.length === 0) {
+    console.warn('No se puede ajustar el mapa - condiciones no cumplidas');
+    return;
+  }
+
+  try {
+    // Filtrar solo puntos con coordenadas válidas
+    const validPoints = farthestPoints.value
+      .filter(p => p.coordinates && !isNaN(p.coordinates.lat) && !isNaN(p.coordinates.lng))
+      .map(p => p.coordinates);
+    
+    if (validPoints.length === 0) {
+      console.warn('No hay coordenadas válidas para ajustar el mapa');
+      return;
+    }
+    
+    const bounds = L.latLngBounds(validPoints);
+    
+    if (!bounds.isValid()) {
+      console.warn('Bounds no válidos, centrando en primer punto');
+      map.value.leafletObject.setView(validPoints[0], 10);
+      return;
+    }
+    
+    // Ajustar el zoom con un padding
+    map.value.leafletObject.fitBounds(bounds, {
+      padding: [50, 50],
+      maxZoom: 12
+    });
+    
+  } catch (e) {
+    console.error('Error crítico al ajustar mapa:', e);
+    // Fallback seguro
+    if (farthestPoints.value[0]?.coordinates) {
+      map.value.leafletObject.setView(farthestPoints.value[0].coordinates, 10);
+    }
+  }
+};
+
+const farthestIcon = L.divIcon({
+  className: 'custom-farthest-marker',
+  html: '<div style="background-color: #ea580c; width: 16px; height: 16px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>',
+  iconSize: [16, 16],
+  iconAnchor: [8, 8]
+});
+
 // Ciclo de vida del componente
 onMounted(() => {
   isMounted.value = true;
@@ -363,5 +556,10 @@ definePageMeta({
   50% {
     opacity: 0.5;
   }
+}
+
+:deep(.custom-farthest-marker) {
+  background: transparent;
+  border: none;
 }
 </style>

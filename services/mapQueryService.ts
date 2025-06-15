@@ -26,3 +26,10 @@ export const getNearestDeliveryPoints = async (companyId: number): Promise<Neare
     throw error; // Re-lanzar para manejo en el componente
   }
 };
+
+
+export const getFarthestDeliveryPoints = async () => {
+  const response = await fetch('http://localhost:8090/companies/reports/farthest-deliveries');
+  if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+  return await response.json();
+};

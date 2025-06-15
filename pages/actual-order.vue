@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import { getActiveOrderNameAddresDTOByDealer, updateOrderStatus } from '~/services/ordersService';
+import { getActiveOrderNameAddresDTOByDealer, updateOrderStatusByDealerId } from '~/services/ordersService';
 import { getClientById } from '~/services/clientService';
 import { getCompleteDealerData } from '~/services/dealerService';
 import { wktToLatLng } from '~/utils/wktUtils';
@@ -11,6 +11,7 @@ import type { OrderNameAddressDTO, Client } from '~/types/types';
 const order = ref<OrderNameAddressDTO | null>(null);
 const clientUbication = ref<{ lat: number; lng: number } | null>(null);
 const dealerUbication = ref<{ lat: number; lng: number } | null>(null);
+const dealerId = ref<number | null>(null);
 const isLoadingUbication = ref(false);
 const isEmergencyProcessing = ref(false); // Para evitar doble click y loading en emergencia
 
@@ -19,6 +20,8 @@ const loadActiveOrder = async () => {
     order.value = null;
     clientUbication.value = null;
     dealerUbication.value = null;
+    dealerId.value = null;
+
     const activeOrder = await getActiveOrderNameAddresDTOByDealer();
     order.value = activeOrder;
 
@@ -35,7 +38,7 @@ const loadActiveOrder = async () => {
       isLoadingUbication.value = false;
     }
 
-    // Ubicación actual del dealer (usando getCompleteDealerData)
+    // Ubicación y id actual del dealer
     const dealerProfile = await getCompleteDealerData();
     if (dealerProfile && dealerProfile.ubication) {
       const coords = wktToLatLng(dealerProfile.ubication);
@@ -43,68 +46,54 @@ const loadActiveOrder = async () => {
         dealerUbication.value = { lat: coords.lat, lng: coords.lng };
       }
     }
+    // Guardar id del dealer para los updates
+    if (dealerProfile && dealerProfile.id) {
+      dealerId.value = dealerProfile.id;
+    }
   } catch (err) {
     order.value = null;
     clientUbication.value = null;
     dealerUbication.value = null;
+    dealerId.value = null;
     isLoadingUbication.value = false;
   }
 };
 
-const updateOrder = async (newStatus: string) => {
-  if (!order.value) return;
-  try {
-    const body: any = { status: newStatus };
-    if (newStatus === 'FALLIDA') {
-      body.deliveryDate = null;
-    }
-    await updateOrderStatus(order.value.id, body);
-    const successMessage = newStatus === 'ENTREGADO'
-      ? 'Orden entregada exitosamente.'
-      : 'La orden fue marcada como fallida.';
-    alert(successMessage);
-    await loadActiveOrder(); // Recarga la orden para refrescar estado y mapa
-  } catch (err) {
-    alert(`Error: ${(err as Error).message}`);
-  }
-};
-
-// NUEVO: función para crear EmergencyReport. Devuelve true si ok, false si falla.
-const reportEmergency = async (): Promise<boolean> => {
-  if (!order.value || !dealerUbication.value) return false;
-  try {
-    // Obtener el id del dealer
-    const dealerProfile = await getCompleteDealerData();
-    const dealerId = dealerProfile?.id;
-    if (!dealerId) throw new Error('No se pudo obtener el ID del dealer');
-    // Crear EmergencyReport
-    await createEmergencyReport({
-      orderId: order.value.id,
-      dealerId,
-      ubication: `POINT(${dealerUbication.value.lng} ${dealerUbication.value.lat})`
-    });
-    return true;
-  } catch (err) {
-    alert('No se pudo registrar la emergencia: ' + (err as Error).message);
-    return false;
-  }
-};
-
-const deliverOrder = () => {
+// Cambia estado a ENTREGADO usando updateOrderStatusByDealerId
+const updateOrderEntregada = async () => {
+  if (!order.value || !dealerId.value) return;
   const confirmed = confirm("¿Estás seguro de que deseas marcar la orden como ENTREGADA?");
-  if (confirmed) {
-    updateOrder('ENTREGADO');
+  if (!confirmed) return;
+  try {
+    await updateOrderStatusByDealerId(order.value.id, dealerId.value, 'ENTREGADO');
+    alert('Orden entregada exitosamente.');
+    await loadActiveOrder();
+  } catch (err) {
+    alert(`Error al marcar como entregada: ${(err as Error).message}`);
   }
 };
 
-const failOrder = async () => {
+// Cambia estado a FALLIDA usando updateOrderStatusByDealerId y crea EmergencyReport
+const updateOrderFallida = async () => {
   if (isEmergencyProcessing.value) return;
+  if (!order.value || !dealerId.value || !dealerUbication.value) return;
   const confirmed = confirm("¿Estás seguro de que deseas marcar la orden como FALLIDA?");
   if (!confirmed) return;
+
   isEmergencyProcessing.value = true;
-  const ok = await reportEmergency(); // Crea EmergencyReport primero
-  if (ok) {
-    await updateOrder('FALLIDA'); // Solo cambia estado si la emergencia fue registrada
+  try {
+    // 1. Crear EmergencyReport
+    await createEmergencyReport({
+      orderId: order.value.id,
+      dealerId: dealerId.value,
+      ubication: `POINT(${dealerUbication.value.lng} ${dealerUbication.value.lat})`
+    });
+    // 2. Cambiar estado a FALLIDA
+    await updateOrderStatusByDealerId(order.value.id, dealerId.value, 'FALLIDA');
+    alert('La orden fue marcada como fallida y emergencia registrada.');
+    await loadActiveOrder();
+  } catch (err) {
+    alert('No se pudo registrar la emergencia o marcar la orden como fallida: ' + (err as Error).message);
   }
   isEmergencyProcessing.value = false;
 };
@@ -162,13 +151,13 @@ definePageMeta({
         <div class="flex space-x-4">
           <button
             class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
-            @click="deliverOrder"
+            @click="updateOrderEntregada"
           >
             Entregar
           </button>
           <button
             class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
-            @click="failOrder"
+            @click="updateOrderFallida"
             :disabled="isEmergencyProcessing"
           >
             Emergencia

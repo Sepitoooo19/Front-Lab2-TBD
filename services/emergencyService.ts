@@ -1,3 +1,4 @@
+// services/emergencyService.ts (frontend)
 import type { EmergencyReport } from '~/types/types';
 import { useRuntimeConfig } from '#app';
 

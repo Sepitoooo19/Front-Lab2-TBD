@@ -1,4 +1,4 @@
-
+// services/ordersService.ts (frontend)
 import type { Product, Order, TopSpender, OrderTotalProductsDTO, OrderNameAddressDTO  } from '~/types/types';
 
 
@@ -51,22 +51,41 @@ export const updateOrder = async (id: number, order: any) => {
 // Función para actualizar el estado de un pedido por el id del dealer
 // Entrada : id del pedido, id del dealer y nuevo estado
 // Salida : Objeto del pedido actualizado
-export const updateOrderStatusByDealerId = async (orderId: number, dealerId: number, newStatus: string) => {
+export const updateOrderStatusByDealerId = async (
+  orderId: number,
+  dealerId: number,
+  newStatus: string,
+  deliveryDate?: string // <-- Nuevo parámetro opcional
+) => {
+  const token = localStorage.getItem('jwt');
+  if (!token) throw new Error('No se encontró el token de autenticación');
+
+  // Body: incluye deliveryDate solo si está presente
+  const body: any = { status: newStatus };
+  if (newStatus === 'ENTREGADO' && deliveryDate) {
+    body.deliveryDate = deliveryDate;
+  }
+
   const response = await fetch(`${config.public.apiBase}/orders/${orderId}/dealer/${dealerId}/status`, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({ status: newStatus }),
+    body: JSON.stringify(body),
   });
 
   if (!response.ok) {
-    throw new Error("Error al actualizar el estado de la orden");
+    if (response.status === 403) throw new Error('No tienes permiso para actualizar esta orden');
+    throw new Error('Error al actualizar el estado de la orden');
   }
 
-  return await response.json();
-};
+  if (response.status === 204) {
+    return null;
+  }
 
+  return await response.json().catch(() => null);
+};
 // Función para eliminar un cliente por su id
 // Entrada : id del cliente
 // Salida : Objeto del cliente eliminado

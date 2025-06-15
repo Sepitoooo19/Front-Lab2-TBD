@@ -333,6 +333,11 @@ onBeforeUnmount(() => {
     map.value.leafletObject.remove();
   }
 });
+
+definePageMeta({
+  layout: 'admin',
+  middleware: 'auth-role'
+});
 </script>
 
 <style scoped>

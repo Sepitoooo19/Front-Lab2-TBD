@@ -24,13 +24,17 @@ export interface Order {
 }
 
 export interface Dealer {
-  id: number
-  name: string
-  rut: string
-  phone: string
-  email: string
-  plate: string
-  vehicle: string
+  id: number | null;
+  name: string;
+  rut: string;
+  email: string;
+  phone: string;
+  vehicle: string;
+  plate: string;
+  rating: string;
+  avgWaitTime: string;
+  deliveryCount: number;
+  ubication: string;
 }
 
 export interface Company {

@@ -2,14 +2,18 @@ export function latLngToWKT(lng: number, lat: number): string {
   return `POINT(${lng} ${lat})`;
 }
 
-export function wktToLatLng(wkt: string): { lng: number; lat: number } | null {
-  const match = wkt.match(/POINT\(([^ ]+) ([^ ]+)\)/);
-  if (match) {
-    const lng = parseFloat(match[1]);
-    const lat = parseFloat(match[2]);
-    return { lng, lat };
-  }
-  return null;
+export function wktToLatLng(wkt: string): { lat: number; lng: number } | null {
+  const match = wkt.match(/POINT\(([^)]+)\)/i);
+  if (!match) return null;
+
+  const coords = match[1].trim().split(/\s+/);
+  if (coords.length !== 2) return null;
+
+  // Asegúrate que el orden sea [longitud, latitud] como en WKT estándar
+  const lng = parseFloat(coords[0]);
+  const lat = parseFloat(coords[1]);
+
+  return { lat, lng };
 }
 
 export function parseWKTPoint(wkt: string): [number, number] | null {

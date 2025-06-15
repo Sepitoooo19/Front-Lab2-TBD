@@ -1,4 +1,12 @@
+import type { Dealer } from "~/types/types";
 const config = useRuntimeConfig();
+
+// Función de validación WKT en el frontend
+const isValidWKT = (wkt: string): boolean => {
+  const pattern = /^POINT\(\s*-?\d+\.?\d*\s+-?\d+\.?\d*\s*\)$/i;
+  return pattern.test(wkt);
+};
+
 
 // Funcion para obtener todos los clientes
 // Entrada : Ninguna
@@ -36,17 +44,34 @@ export const createDealer = async (dealer: any) => {
 // Funcion para actualizar un dealer
 // Entrada : id del dealer y datos del dealer
 // Salida : Objeto del dealer actualizado
-export const updateDealer = async (id: number, dealer: any) => {
-  const response = await fetch(`${config.public.apiBase}/dealers/${id}`, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(dealer),
-  });
-  if (!response.ok) throw new Error("Error al actualizar el dealer");
-  return await response.json();
+// Función mejorada para actualizar dealer
+export const updateDealer = async (id: number, dealer: any): Promise<any> => {
+  try {
+    // Validar que la ubicación esté en formato WKT si existe
+    if (dealer.ubication && !isValidWKT(dealer.ubication)) {
+      throw new Error('Formato de ubicación inválido. Use "POINT(longitud latitud)"');
+    }
+
+    const response = await fetch(`${config.public.apiBase}/dealers/${id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(dealer),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Error al actualizar el dealer');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error en updateDealer:', error);
+    throw error;
+  }
 };
+
 
 // Funcion para eliminar un dealer por su id
 // Entrada : id del dealer
@@ -162,4 +187,32 @@ export const getAuthenticatedDealerProfile = async (): Promise<any> => {
     console.error('Error en dealerService:', error);
     throw error;
   }
+};
+
+// Obtener datos completos (incluyendo ubicación)
+export const getCompleteDealerData = async (): Promise<{
+  id: number;
+  name: string;
+  rut: string;
+  email: string;
+  phone: string;
+  vehicle: string;
+  plate: string;
+  ubication: string;
+}> => {
+  const config = useRuntimeConfig();
+  const token = localStorage.getItem('jwt');
+  
+  const response = await fetch(`${config.public.apiBase}/dealers/me/data`, {
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.message || 'Error al obtener datos completos');
+  }
+
+  return await response.json();
 };

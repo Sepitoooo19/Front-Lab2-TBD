@@ -9,8 +9,8 @@
       >
         <LTileLayer :url="tileUrl" :attribution="tileAttribution" />
         <LMarker 
-          v-if="markerLat !== null && markerLng !== null"
-          :lat-lng="[markerLat, markerLng]" 
+          v-if="markerLatLng"
+          :lat-lng="markerLatLng" 
           draggable 
           @update:lat-lng="updateMarker" 
         />
@@ -20,12 +20,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
-import type { LatLngTuple } from 'leaflet'
+import { ref, onMounted, watch, computed } from 'vue'
+import type { LatLngExpression, LatLngTuple } from 'leaflet'
 
 interface Props {
-  lat?: number | string | null
-  lng?: number | string | null
+  lat?: number | null
+  lng?: number | null
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -35,52 +35,57 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits(['update:lat', 'update:lng'])
 
-const toNumber = (value: number | string | null): number | null => {
-  if (value === null) return null
-  const num = typeof value === 'string' ? parseFloat(value) : value
-  return isNaN(num) ? null : num
-}
-
 const zoom = ref(13)
 const isMounted = ref(false)
 
-const markerLat = ref<number | null>(toNumber(props.lat)) // latitud
-const markerLng = ref<number | null>(toNumber(props.lng)) // longitud
-const center = ref<LatLngTuple>([
-  markerLat.value !== null ? markerLat.value : 0,
-  markerLng.value !== null ? markerLng.value : 0
-])
+// Usamos una sola referencia para las coordenadas del marcador
+const markerLatLng = ref<LatLngTuple | null>(null)
+
+// Centro del mapa (usamos computed para reactividad)
+const center = computed<LatLngExpression>(() => {
+  return markerLatLng.value || [0, 0]
+})
 
 const tileUrl = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
 const tileAttribution = '&copy; OpenStreetMap contributors'
 
-watch(() => [props.lat, props.lng], ([newLat, newLng]) => {
-  const lat = toNumber(newLat)
-  const lng = toNumber(newLng)
-  if (lat !== null && lng !== null) {
-    markerLat.value = lat
-    markerLng.value = lng
-    center.value = [lat, lng]
+// Inicialización y watch de props
+const initializeFromProps = () => {
+  if (props.lat !== null && props.lng !== null) {
+    markerLatLng.value = [props.lat, props.lng]
+  } else {
+    markerLatLng.value = null
   }
-})
-
-const onMapClick = (e: { latlng: { lat: number; lng: number } }) => {
-  markerLat.value = e.latlng.lat
-  markerLng.value = e.latlng.lng
-  center.value = [e.latlng.lat, e.latlng.lng]
-  emit('update:lat', e.latlng.lat)
-  emit('update:lng', e.latlng.lng)
-}
-
-const updateMarker = ([lat, lng]: [number, number]) => {
-  markerLat.value = lat
-  markerLng.value = lng
-  center.value = [lat, lng]
-  emit('update:lat', lat)
-  emit('update:lng', lng)
 }
 
 onMounted(() => {
   isMounted.value = true
+  initializeFromProps()
 })
+
+watch(() => [props.lat, props.lng], () => {
+  initializeFromProps()
+})
+
+// Manejo de eventos
+const onMapClick = (e: { latlng: { lat: number; lng: number } }) => {
+  const newLatLng: LatLngTuple = [e.latlng.lat, e.latlng.lng]
+  markerLatLng.value = newLatLng
+  emit('update:lat', e.latlng.lat)
+  emit('update:lng', e.latlng.lng)
+}
+
+const updateMarker = (event: { latlng: LatLngExpression }) => {
+  if (Array.isArray(event.latlng)) {
+    const [lat, lng] = event.latlng
+    markerLatLng.value = [lat, lng]
+    emit('update:lat', lat)
+    emit('update:lng', lng)
+  } else if ('lat' in event.latlng && 'lng' in event.latlng) {
+    const { lat, lng } = event.latlng
+    markerLatLng.value = [lat, lng]
+    emit('update:lat', lat)
+    emit('update:lng', lng)
+  }
+}
 </script>

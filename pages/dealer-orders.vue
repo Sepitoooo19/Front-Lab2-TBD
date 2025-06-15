@@ -1,34 +1,77 @@
-<!-- pagina que muestra el historial de ordenes del repartidor-->
-
 <script setup lang="ts">
-// Importaciones necesarias
 import { ref, onMounted } from 'vue';
 import { useRuntimeConfig } from '#app';
-import { getOrdersByDealerDto } from '~/services/ordersService'; // Asegúrate de usar el método correcto
-import type { OrderTotalProductsDTO } from '~/types/types'; // Ajusta el tipo según el DTO
+import { getOrdersByDealerDto } from '~/services/ordersService';
+import { getClientById } from '~/services/clientService';
+import { wktToLatLng } from '~/utils/wktUtils';
+import OrdersMap from '~/components/common/OrdersMap.vue';
 
-// Configuración y estado
+// Extiende el tipo para incluir clientId y address opcionales
+type DealerOrder = {
+  id: number;
+  orderDate: string;
+  deliveryDate: string;
+  status: string;
+  totalPrice: number;
+  totalProducts: number;
+  clientId?: number;
+  address?: string;
+};
+
 const config = useRuntimeConfig();
-const orders = ref<OrderTotalProductsDTO[]>([]); // Cambia el tipo a OrderTotalProductsDTO
+const orders = ref<DealerOrder[]>([]);
+const ordersForMap = ref<Array<{
+  id: number,
+  location: string | null,
+  address?: string,
+  status?: string
+}>>([]);
+const isLoadingMap = ref(true);
 
-// Cargar las órdenes al montar el componente
 onMounted(async () => {
   try {
-    // Llamada al servicio que usa el token del dealer autenticado
-    orders.value = await getOrdersByDealerDto();
+    // Forzamos el tipo extendido
+    orders.value = await getOrdersByDealerDto() as DealerOrder[];
+
+    const points: Array<{
+      id: number,
+      location: string | null,
+      address?: string,
+      status?: string
+    }> = [];
+
+    await Promise.all(orders.value.map(async (order) => {
+      try {
+        if (order.clientId) {
+          const client = await getClientById(order.clientId);
+          if (client && client.ubication) {
+            points.push({
+              id: order.id,
+              location: client.ubication,
+              address: order.address,
+              status: order.status
+            });
+          }
+        }
+      } catch (err) {
+        // Si falla, no agrega el punto
+      }
+    }));
+
+    ordersForMap.value = points;
+    isLoadingMap.value = false;
   } catch (error) {
     console.error('Error al cargar el historial de órdenes:', error);
     alert('Error al cargar el historial de órdenes');
+    isLoadingMap.value = false;
   }
 });
 
-// Definir metadatos de la página
 definePageMeta({
   layout: 'dealer',
 });
 
-// Función para formatear la fecha de entrega
-const formatDeliveryDate = (order: OrderTotalProductsDTO) => {
+const formatDeliveryDate = (order: DealerOrder) => {
   if (order.status === 'FALLIDA') {
     return 'No se pudo entregar';
   }
@@ -36,11 +79,28 @@ const formatDeliveryDate = (order: OrderTotalProductsDTO) => {
 };
 </script>
 
-<!-- Template para mostrar el historial de órdenes del repartidor -->
-
 <template>
   <div class="p-6">
     <h1 class="text-2xl font-bold mb-4">Historial de Órdenes</h1>
+
+    <!-- Mapa de historial de órdenes -->
+    <div class="mb-10">
+      <h2 class="text-lg font-semibold mb-2">Mapa de historial de órdenes</h2>
+      <div
+        class="rounded-xl shadow-lg border overflow-hidden bg-white"
+        style="height: 18rem; min-height: 250px; width: 100%;"
+      >
+        <div v-if="isLoadingMap" class="flex items-center justify-center h-full text-gray-500">
+          Cargando mapa...
+        </div>
+        <div v-else class="h-full w-full">
+          <OrdersMap
+            :orders="ordersForMap"
+            :show-status-icons="true"
+          />
+        </div>
+      </div>
+    </div>
 
     <!-- Tabla de órdenes -->
     <table class="min-w-full bg-white border border-gray-300 rounded-lg shadow">
@@ -56,7 +116,7 @@ const formatDeliveryDate = (order: OrderTotalProductsDTO) => {
       </thead>
       <tbody>
         <tr v-for="order in orders" :key="order.id" class="hover:bg-gray-50">
-          <td class="px-4 py-2">{{ order.id }}</td> <!-- Cambiado de order.orderId a order.id -->
+          <td class="px-4 py-2">{{ order.id }}</td>
           <td class="px-4 py-2">{{ new Date(order.orderDate).toLocaleString() }}</td>
           <td class="px-4 py-2">{{ formatDeliveryDate(order) }}</td>
           <td class="px-4 py-2">{{ order.totalProducts }}</td>
@@ -70,6 +130,3 @@ const formatDeliveryDate = (order: OrderTotalProductsDTO) => {
     </div>
   </div>
 </template>
-
-<style scoped>
-</style>

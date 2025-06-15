@@ -98,7 +98,7 @@ onMounted(() => {
 });
 
 definePageMeta({
-  layout: 'admin',
+  layout: 'dealer',
   middleware: 'auth-role'
 });
 </script>

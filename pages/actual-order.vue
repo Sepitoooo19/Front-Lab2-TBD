@@ -1,27 +1,26 @@
-<!-- En esta page se muestra la orden activa del repartidor, incluyendo el mapa de entrega -->
-
 <script setup lang="ts">
-// Importa los módulos necesarios
 import { ref, onMounted } from 'vue';
 import { getActiveOrderNameAddresDTOByDealer, updateOrderStatus } from '~/services/ordersService';
 import { getClientById } from '~/services/clientService';
+import { getCompleteDealerData } from '~/services/dealerService';
 import { wktToLatLng } from '~/utils/wktUtils';
-import MapPicker from '~/components/common/MapPicker.vue';
+import OrdersMap from '~/components/common/OrdersMap.vue';
 import type { OrderNameAddressDTO, Client } from '~/types/types';
 
 const order = ref<OrderNameAddressDTO | null>(null);
 const clientUbication = ref<{ lat: number; lng: number } | null>(null);
+const dealerUbication = ref<{ lat: number; lng: number } | null>(null);
 const isLoadingUbication = ref(false);
 
-// Función para cargar la orden activa y la ubicación del cliente
 const loadActiveOrder = async () => {
   try {
     order.value = null;
     clientUbication.value = null;
+    dealerUbication.value = null;
     const activeOrder = await getActiveOrderNameAddresDTOByDealer();
     order.value = activeOrder;
 
-    // Si hay orden y clientId, obtener la ubicación del cliente
+    // Ubicación del cliente
     if (activeOrder && activeOrder.clientId) {
       isLoadingUbication.value = true;
       const client: Client = await getClientById(activeOrder.clientId);
@@ -33,15 +32,23 @@ const loadActiveOrder = async () => {
       }
       isLoadingUbication.value = false;
     }
+
+    // Ubicación actual del dealer (usando getCompleteDealerData)
+    const dealerProfile = await getCompleteDealerData();
+    if (dealerProfile && dealerProfile.ubication) {
+      const coords = wktToLatLng(dealerProfile.ubication);
+      if (coords) {
+        dealerUbication.value = { lat: coords.lat, lng: coords.lng };
+      }
+    }
   } catch (err) {
-    console.error('Error al cargar la orden activa o la ubicación:', err);
     order.value = null;
     clientUbication.value = null;
+    dealerUbication.value = null;
     isLoadingUbication.value = false;
   }
 };
 
-// Función para actualizar el estado de la orden
 const updateOrder = async (newStatus: string) => {
   if (!order.value) return;
   try {
@@ -56,8 +63,8 @@ const updateOrder = async (newStatus: string) => {
     alert(successMessage);
     order.value = null;
     clientUbication.value = null;
+    dealerUbication.value = null;
   } catch (err) {
-    console.error(`Error al actualizar el estado a ${newStatus}:`, err);
     alert(`Error: ${(err as Error).message}`);
   }
 };
@@ -86,9 +93,9 @@ definePageMeta({
 </script>
 
 <template>
-  <div class="p-6">
+  <div class="p-6 pb-0">
     <h1 class="text-2xl font-bold mb-4">Orden Activa</h1>
-    <div v-if="order" class="border border-gray-300 rounded-lg shadow-md p-6 bg-white">
+    <div v-if="order" class="border border-gray-300 rounded-lg shadow-md p-6 bg-white mb-2 min-h-[600px]">
       <h2 class="text-xl font-bold">N° Orden: {{ order.id }}</h2>
       <p><strong>Monto:</strong> ${{ order.totalPrice }}</p>
       <p><strong>Estado:</strong> {{ order.status }}</p>
@@ -97,37 +104,49 @@ definePageMeta({
       <p><strong>Nombre Cliente:</strong> {{ order.nameClient || 'N/A' }}</p>
       <p><strong>Dirección:</strong> {{ order.address || 'N/A' }}</p>
       <p v-if="clientUbication">
-        <strong>Coordenadas:</strong>
+        <strong>Coordenadas Cliente:</strong>
         Latitud: {{ clientUbication.lat }}, Longitud: {{ clientUbication.lng }}
       </p>
+      <p v-if="dealerUbication">
+        <strong>Tu ubicación actual:</strong>
+        Latitud: {{ dealerUbication.lat }}, Longitud: {{ dealerUbication.lng }}
+      </p>
 
-      <!-- Mapa de ubicación de entrega a -->
-      <div class="mt-6">
-        <h3 class="font-semibold mb-2">Ubicación de entrega</h3>
-        <div v-if="isLoadingUbication" class="text-gray-500 mb-2">Cargando mapa...</div>
-        <div v-else-if="clientUbication">
-          <MapPicker
-            :lat="clientUbication.lat"
-            :lng="clientUbication.lng"
-            :draggable="false"
-          />
+      <!-- Mapa de ubicación de entrega y dealer -->
+      <div class="mb-10">
+        <h3 class="font-semibold mb-2">Mapa de entrega y tu ubicación</h3>
+        <div
+          class="rounded-xl shadow-lg border overflow-hidden bg-white"
+          style="height: 18rem; min-height: 250px; width: 100%;"
+        >
+          <div v-if="isLoadingUbication" class="flex items-center justify-center h-full text-gray-500">
+            Cargando mapa...
+          </div>
+          <div v-else class="h-full w-full">
+            <OrdersMap
+              :orders="clientUbication ? [{ id: order.id, location: `POINT(${clientUbication.lng} ${clientUbication.lat})`, address: order.address }] : []"
+              :dealer-location="dealerUbication"
+            />
+          </div>
         </div>
-        <div v-else class="text-gray-500 mb-2">No se pudo obtener la ubicación del cliente.</div>
       </div>
 
-      <div class="mt-4 flex space-x-4">
-        <button
-          class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
-          @click="deliverOrder"
-        >
-          Entregar
-        </button>
-        <button
-          class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
-          @click="failOrder"
-        >
-          Emergencia
-        </button>
+      <div class="flex flex-col h-full">
+        <div class="mt-4 flex-grow"></div>
+        <div class="flex space-x-4">
+          <button
+            class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+            @click="deliverOrder"
+          >
+            Entregar
+          </button>
+          <button
+            class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
+            @click="failOrder"
+          >
+            Emergencia
+          </button>
+        </div>
       </div>
     </div>
     <div v-else class="text-gray-500">

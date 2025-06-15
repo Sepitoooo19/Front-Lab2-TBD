@@ -3,7 +3,7 @@ import { ref, onMounted } from 'vue';
 import { useRuntimeConfig } from '#app';
 import { getAllOrders, getActiveOrderByDealer } from '~/services/ordersService';
 import { getClientById } from '~/services/clientService';
-import { getAuthenticatedDealerProfile } from '~/services/dealerService';
+import { getCompleteDealerData } from '~/services/dealerService';
 import { wktToLatLng } from '~/utils/wktUtils';
 import type { Order } from '~/types/types';
 import OrdersMap from '~/components/common/OrdersMap.vue';
@@ -16,7 +16,6 @@ const hasActiveOrder = ref(false);
 const dealerLocation = ref<{ lat: number; lng: number } | null>(null);
 const isLoadingMap = ref(true);
 
-// Lista de puntos para el mapa (cada uno: { id, location, address, status })
 const ordersForMap = ref<Array<{
   id: number,
   location: string | null,
@@ -39,7 +38,7 @@ const loadMapPoints = async () => {
 
   // 1. Ubicación del dealer
   try {
-    const dealerProfile = await getAuthenticatedDealerProfile();
+    const dealerProfile = await getCompleteDealerData();
     if (dealerProfile && dealerProfile.ubication) {
       const coords = wktToLatLng(dealerProfile.ubication);
       if (coords) {
@@ -162,15 +161,22 @@ definePageMeta({
   <div>
     <h1 class="text-2xl font-bold mb-4">Órdenes Sin Asignar</h1>
 
-    <!-- Mapa de puntos de entrega y ubicación del dealer a -->
-    <div class="mb-8">
+    <!-- Mapa de puntos de entrega y ubicación del dealer -->
+    <div class="mb-10">
       <h2 class="text-lg font-semibold mb-2">Mapa de puntos de entrega</h2>
-      <div v-if="isLoadingMap" class="text-gray-500 mb-2">Cargando mapa...</div>
-      <div v-else style="height: 400px; width: 100%;">
-        <OrdersMap
-          :orders="ordersForMap"
-          :dealer-location="dealerLocation"
-        />
+      <div
+        class="rounded-xl shadow-lg border overflow-hidden bg-white"
+        style="height: 18rem; min-height: 250px; width: 100%;"
+      >
+        <div v-if="isLoadingMap || !dealerLocation" class="flex items-center justify-center h-full text-gray-500">
+          Cargando mapa...
+        </div>
+        <div v-else class="h-full w-full">
+          <OrdersMap
+            :orders="ordersForMap"
+            :dealer-location="dealerLocation"
+          />
+        </div>
       </div>
     </div>
 

@@ -6,20 +6,20 @@
           v-if="isMounted"
           v-model:zoom="zoom"
           :center="computedCenter"
-          style="height: 100%; width: 100%;"
+          style="height: 250px; width: 100%;"
         >
           <LTileLayer 
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           />
-          <!-- Dealer marker (rojo) -->
+          <!-- Dealer marker (solo si dealerLocation está presente) -->
           <LMarker
             v-if="dealerLocation"
             :lat-lng="[dealerLocation.lat, dealerLocation.lng]"
             :icon="redIcon"
           >
             <LPopup>
-              <span class="font-bold text-red-700">Tú (Dealer)</span>
+              <span class="font-bold" style="color: #2563eb">Tú (Dealer)</span>
             </LPopup>
           </LMarker>
           <!-- Order delivery points -->
@@ -27,6 +27,7 @@
             v-for="order in ordersWithLocation"
             :key="order.id"
             :lat-lng="[order.lat, order.lng]"
+            :icon="getOrderIcon(order)"
           >
             <LPopup>
               <div class="font-bold">Orden #{{ order.id }}</div>
@@ -55,20 +56,39 @@ const props = defineProps<{
     status?: string
   }>
   dealerLocation?: { lat: number, lng: number } | null
+  showStatusIcons?: boolean
 }>()
 
 const isMounted = ref(false)
 const zoom = ref(13)
 const defaultCenter: [number, number] = [-33.4489, -70.6693] // Santiago
 
-// Icono rojo para el dealer
-const redIcon = new L.Icon({
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x-red.png',
+// Iconos
+const defaultIcon = new L.Icon({
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
   shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
   iconSize: [25, 41],
   iconAnchor: [12, 41],
   popupAnchor: [1, -34],
   shadowSize: [41, 41]
+})
+
+const redIcon = new L.Icon({
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41],
+})
+
+const greenIcon = new L.Icon({
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41],
 })
 
 // Parse POINT WKT string to [lat, lng]
@@ -104,28 +124,25 @@ const ordersWithLocation = computed(() =>
     } => o !== null)
 )
 
-// Centro del mapa: dealer > primer pedido > Santiago
+// Centro del mapa: primer pedido > dealer > Santiago
 const computedCenter = computed<[number, number]>(() => {
-  if (props.dealerLocation)
-    return [props.dealerLocation.lat, props.dealerLocation.lng]
   if (ordersWithLocation.value.length > 0)
     return [ordersWithLocation.value[0].lat, ordersWithLocation.value[0].lng]
+  if (props.dealerLocation)
+    return [props.dealerLocation.lat, props.dealerLocation.lng]
   return defaultCenter
 })
+
+// Icono según estado
+function getOrderIcon(order: { status?: string }) {
+  if (props.showStatusIcons) {
+    if (order.status === 'ENTREGADO') return greenIcon
+    if (order.status === 'FALLIDA') return redIcon
+  }
+  return defaultIcon
+}
 
 onMounted(() => {
   isMounted.value = true
 })
 </script>
-
-<style scoped>
-.order-map-container {
-  width: 100%;
-  height: 100%;
-  min-height: 300px;
-}
-.order-map {
-  width: 100%;
-  height: 100%;
-}
-</style>

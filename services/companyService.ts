@@ -84,3 +84,11 @@ export const getNearestDeliveryPoints = async (companyId: number): Promise<Neare
   
   return await response.json();
 };
+
+
+export async function getCompanyIdByName(name: string): Promise<number> {
+  const res = await fetch(`/companies/by-name/${encodeURIComponent(name)}`);
+  if (!res.ok) throw new Error('No se pudo obtener el ID');
+  const data = await res.json();
+  return data.id;
+}

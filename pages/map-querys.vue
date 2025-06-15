@@ -34,6 +34,8 @@
         </button>
       </div>
 
+
+
       <!-- Información de la empresa seleccionada -->
       <div v-if="selectedCompany" class="mb-4 p-3 bg-blue-50 rounded-md">
         <p class="text-sm text-blue-800">
@@ -47,11 +49,13 @@
       <h3 class="text-lg font-semibold mb-4">Visualización en Mapa</h3>
       <div class="h-96 border border-gray-300 rounded-md overflow-hidden">
         <LMap
+          v-if="isMounted"
           ref="map"
           :zoom="zoom"
           :center="center"
           :use-global-leaflet="false"
           style="height: 100%; width: 100%;"
+          @ready="onMapReady"
         >
           <LTileLayer
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -136,25 +140,22 @@
 
     <!-- Mensaje cuando no hay resultados -->
     <div v-if="searchPerformed && !loading && deliveryPoints.length === 0" class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-      <p class="text-yellow-800">No se encontraron puntos de entrega cercanos para la empresa seleccionada.</p>
-    </div>
+        <p class="text-yellow-800">
+            {{ selectedCompany?.ubication 
+            ? 'No se encontraron puntos de entrega cercanos para la empresa seleccionada'
+            : 'La empresa seleccionada no tiene ubicación registrada' }}
+        </p>
+        </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue';
 import { LMap, LTileLayer, LMarker, LPopup } from '@vue-leaflet/vue-leaflet';
 import L from 'leaflet';
 import { parseWKTPoint } from '~/utils/wktUtils';
 import { getAllCompanies } from '~/services/companyService';
-import { getNearestDeliveryPoints } from '~/services/mapQuerysService'; // Corregir el nombre del servicio
-
-// Middleware para verificar que sea admin
-definePageMeta({
-  middleware: 'auth-role',
-  requiredRole: 'ADMIN',
-  layout: 'admin'
-});
+import { getNearestDeliveryPoints } from '~/services/mapQueryService';
 
 // Estados reactivos
 const companies = ref([]);
@@ -162,6 +163,8 @@ const selectedCompanyId = ref('');
 const deliveryPoints = ref([]);
 const loading = ref(false);
 const searchPerformed = ref(false);
+const isMounted = ref(false);
+const mapReady = ref(false);
 
 // Configuración del mapa
 const zoom = ref(13);
@@ -191,9 +194,26 @@ const deliveryIcon = L.divIcon({
   iconAnchor: [8, 8]
 });
 
-/**
- * Carga las empresas disponibles
- */
+// Función para cuando el mapa está listo
+const onMapReady = () => {
+  mapReady.value = true;
+  if (map.value?.leafletObject) {
+    map.value.leafletObject.invalidateSize();
+  }
+};
+
+// Función para limpiar marcadores del mapa
+const clearMapMarkers = () => {
+  if (!map.value?.leafletObject) return;
+  
+  map.value.leafletObject.eachLayer(layer => {
+    if (layer instanceof L.Marker && layer !== companyMarker.value) {
+      map.value.leafletObject.removeLayer(layer);
+    }
+  });
+};
+
+// Carga las empresas disponibles
 const loadCompanies = async () => {
   try {
     companies.value = await getAllCompanies();
@@ -202,91 +222,116 @@ const loadCompanies = async () => {
   }
 };
 
-/**
- * Maneja el cambio de empresa seleccionada
- */
-const onCompanyChange = () => {
+// Maneja el cambio de empresa seleccionada
+const onCompanyChange = async () => {
+  if (!isMounted.value) return;
+  
+  loading.value = true;
+  clearMapMarkers();
   deliveryPoints.value = [];
   companyMarker.value = null;
   searchPerformed.value = false;
-  center.value = [-36.8485, -73.0524];
-  zoom.value = 13;
+  
+  const company = companies.value.find(c => c.id === parseInt(selectedCompanyId.value));
+  if (company?.ubication) {
+    const coords = parseWKTPoint(company.ubication);
+    if (coords) {
+      companyMarker.value = coords;
+      center.value = coords;
+      zoom.value = 15;
+      
+      await nextTick();
+      if (map.value?.leafletObject) {
+        map.value.leafletObject.invalidateSize();
+      }
+    }
+  }
+  
+  loading.value = false;
 };
 
-/**
- * Busca los puntos de entrega más cercanos
- */
+// Ajusta el mapa para mostrar todos los puntos
+const fitMapToPoints = () => {
+  if (!map.value?.leafletObject || !companyMarker.value) return;
+
+  const bounds = L.latLngBounds([companyMarker.value]);
+
+  deliveryPoints.value.forEach(point => {
+    if (point?.coordinates) {
+      bounds.extend(point.coordinates);
+    }
+  });
+
+  if (bounds.isValid()) {
+    try {
+      map.value.leafletObject.fitBounds(bounds, { 
+        padding: [20, 20],
+        maxZoom: 15
+      });
+    } catch (e) {
+      console.warn('Error al ajustar mapa:', e);
+    }
+  }
+};
+
+// Busca los puntos de entrega más cercanos
 const findNearestPoints = async () => {
-  if (!selectedCompanyId.value) return;
+  if (!selectedCompanyId.value || !isMounted.value) return;
 
   loading.value = true;
   searchPerformed.value = true;
   deliveryPoints.value = [];
+  clearMapMarkers();
 
   try {
     const response = await getNearestDeliveryPoints(parseInt(selectedCompanyId.value));
     
+    if (!isMounted.value) return;
+    
     if (Array.isArray(response) && response.length > 0) {
-      const processedPoints = response.map(point => {
-        const coordinates = parseWKTPoint(point.clientLocation);
-        if (coordinates) {
-          return {
-            ...point,
-            coordinates: coordinates
-          };
-        }
-        return null;
-      }).filter(point => point !== null);
+      const processedPoints = response
+        .map(point => {
+          const coordinates = parseWKTPoint(point.clientLocation);
+          return coordinates ? { ...point, coordinates } : null;
+        })
+        .filter(Boolean);
       
       deliveryPoints.value = processedPoints;
       
-      if (selectedCompany.value && selectedCompany.value.ubication) {
+      // Centrar el mapa
+      if (selectedCompany.value?.ubication) {
         const companyCoords = parseWKTPoint(selectedCompany.value.ubication);
         if (companyCoords) {
           companyMarker.value = companyCoords;
-          center.value = [companyCoords[0], companyCoords[1]];
-          
-          if (deliveryPoints.value.length > 0) {
-            await nextTick();
-            fitMapToPoints();
-          }
+          center.value = companyCoords;
+          await nextTick();
+          fitMapToPoints();
         }
       }
-    } else {
-      deliveryPoints.value = [];
     }
-
   } catch (error) {
     console.error('Error al buscar puntos cercanos:', error);
-    deliveryPoints.value = [];
+    if (isMounted.value) {
+      deliveryPoints.value = [];
+    }
   } finally {
-    loading.value = false;
+    if (isMounted.value) {
+      loading.value = false;
+    }
   }
 };
 
-/**
- * Ajusta el mapa para mostrar todos los puntos
- */
-const fitMapToPoints = () => {
-  if (!map.value?.leafletObject) return;
-
-  const bounds = L.latLngBounds();
-  
-  if (companyMarker.value) {
-    bounds.extend(companyMarker.value);
-  }
-  
-  deliveryPoints.value.forEach(point => {
-    bounds.extend(point.coordinates);
-  });
-
-  if (bounds.isValid()) {
-    map.value.leafletObject.fitBounds(bounds, { padding: [20, 20] });
-  }
-};
-
+// Ciclo de vida del componente
 onMounted(() => {
+  isMounted.value = true;
   loadCompanies();
+});
+
+onBeforeUnmount(() => {
+  isMounted.value = false;
+  if (map.value?.leafletObject) {
+    map.value.leafletObject.remove();
+  }
 });
 </script>
 

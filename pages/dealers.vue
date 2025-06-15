@@ -4,23 +4,48 @@
 // Importaciones necesarias
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { getAllDealers, deleteDealerById } from '~/services/dealerService';
-import type { Dealer } from '~/types/types';
+import { getAllDealers, deleteDealerById, getAllDealersWithDistance } from '~/services/dealerService';
+import type { Dealer, DealerWithDistance, DealerWithDistanceDTO } from '~/types/types';
 // Importa el servicio y el tipo Dealer
 const router = useRouter();
 const dealers = ref<Dealer[]>([]);
+const dealersWithDistance = ref<DealerWithDistance[]>([]);
 
 // Carga todos los dealers al montar el componente
 // Metodo: getAllDealers
 // Entrada: token (localStorage)
 // Salida: dealers
+
 onMounted(async () => {
   try {
-    dealers.value = await getAllDealers();
+    const [dealersData, distanceData] = await Promise.all([
+      getAllDealers(),
+      getAllDealersWithDistance()
+    ]);
+    
+    dealersWithDistance.value = dealersData.map((dealer: Dealer) => {
+      // Aseguramos que el id no sea null para la comparación
+      const dealerId = dealer.id;
+      const distanceInfo = dealerId ? 
+        distanceData.find((d: DealerWithDistanceDTO) => d.id === dealerId) : 
+        null;
+      
+      return {
+        ...dealer,
+        distanceMeters: distanceInfo?.distanceMeters || 0,
+        distanceFormatted: formatDistance(distanceInfo?.distanceMeters || 0)
+      } as DealerWithDistance;
+    });
+    
   } catch (error) {
+    console.error('Error:', error);
     alert('Error al cargar los dealers');
   }
 });
+
+const formatDistance = (meters: number): string => {
+  return meters ? `${(meters / 1000).toFixed(2)} km` : '0 km';
+};
 
 // Funcion de redirección a la página de creación de dealer
 const createDealer = () => {
@@ -78,11 +103,12 @@ definePageMeta({
           <th class="px-4 py-2 text-left">Teléfono</th>
           <th class="px-4 py-2 text-left">Vehículo</th>
           <th class="px-4 py-2 text-left">Placa</th>
+          <th class="px-4 py-2 text-left">Distancia (mes)</th> <!-- Nueva columna -->
           <th class="px-4 py-2 text-left">Acciones</th>
         </tr>
       </thead>
       <tbody>
-        <tr v-for="dealer in dealers" :key="dealer.id" class="hover:bg-gray-50">
+        <tr v-for="dealer in dealersWithDistance" :key="dealer.id ?? `dealer-${index}`">
           <td class="px-4 py-2">{{ dealer.id }}</td>
           <td class="px-4 py-2">{{ dealer.name }}</td>
           <td class="px-4 py-2">{{ dealer.rut }}</td>
@@ -90,6 +116,7 @@ definePageMeta({
           <td class="px-4 py-2">{{ dealer.phone }}</td>
           <td class="px-4 py-2">{{ dealer.vehicle }}</td>
           <td class="px-4 py-2">{{ dealer.plate }}</td>
+          <td class="px-4 py-2">{{ dealer.distanceFormatted }}</td>
           <td class="px-4 py-2 space-x-2">
             
             <button

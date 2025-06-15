@@ -1,4 +1,4 @@
-import type { Dealer } from "~/types/types";
+import type { Dealer, DealerWithDistance, DealerWithDistanceDTO } from "~/types/types";
 const config = useRuntimeConfig();
 
 // Función de validación WKT en el frontend
@@ -215,4 +215,21 @@ export const getCompleteDealerData = async (): Promise<{
   }
 
   return await response.json();
+};
+
+
+export const getAllDealersWithDistance = async (): Promise<DealerWithDistanceDTO[]> => {
+  const token = localStorage.getItem('token');
+  const response = await fetch(`${config.public.apiBase}/dealers/with-distance`, {
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  });
+  
+  if (!response.ok) throw new Error('Error al obtener dealers con distancia');
+  return await response.json();
+};
+// Función auxiliar para formatear distancia
+const formatDistance = (meters: number): string => {
+  return meters ? `${(meters / 1000).toFixed(2)} km` : '0 km';
 };

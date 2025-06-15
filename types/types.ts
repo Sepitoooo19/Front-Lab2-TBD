@@ -116,3 +116,13 @@ export type EmergencyReport = {
   dealerId: number;
   ubication: string; // WKT
 };
+
+export interface DealerWithDistanceDTO {
+  id: number;
+  distanceMeters: number;
+}
+
+export interface DealerWithDistance extends Dealer {
+  distanceMeters: number;
+  distanceFormatted: string;
+}

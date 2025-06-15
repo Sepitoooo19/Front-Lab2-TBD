@@ -5,12 +5,14 @@ import { getClientById } from '~/services/clientService';
 import { getCompleteDealerData } from '~/services/dealerService';
 import { wktToLatLng } from '~/utils/wktUtils';
 import OrdersMap from '~/components/common/OrdersMap.vue';
+import { createEmergencyReport } from '~/services/emergencyService';
 import type { OrderNameAddressDTO, Client } from '~/types/types';
 
 const order = ref<OrderNameAddressDTO | null>(null);
 const clientUbication = ref<{ lat: number; lng: number } | null>(null);
 const dealerUbication = ref<{ lat: number; lng: number } | null>(null);
 const isLoadingUbication = ref(false);
+const isEmergencyProcessing = ref(false); // Para evitar doble click y loading en emergencia
 
 const loadActiveOrder = async () => {
   try {
@@ -61,11 +63,30 @@ const updateOrder = async (newStatus: string) => {
       ? 'Orden entregada exitosamente.'
       : 'La orden fue marcada como fallida.';
     alert(successMessage);
-    order.value = null;
-    clientUbication.value = null;
-    dealerUbication.value = null;
+    await loadActiveOrder(); // Recarga la orden para refrescar estado y mapa
   } catch (err) {
     alert(`Error: ${(err as Error).message}`);
+  }
+};
+
+// NUEVO: función para crear EmergencyReport. Devuelve true si ok, false si falla.
+const reportEmergency = async (): Promise<boolean> => {
+  if (!order.value || !dealerUbication.value) return false;
+  try {
+    // Obtener el id del dealer
+    const dealerProfile = await getCompleteDealerData();
+    const dealerId = dealerProfile?.id;
+    if (!dealerId) throw new Error('No se pudo obtener el ID del dealer');
+    // Crear EmergencyReport
+    await createEmergencyReport({
+      orderId: order.value.id,
+      dealerId,
+      ubication: `POINT(${dealerUbication.value.lng} ${dealerUbication.value.lat})`
+    });
+    return true;
+  } catch (err) {
+    alert('No se pudo registrar la emergencia: ' + (err as Error).message);
+    return false;
   }
 };
 
@@ -76,11 +97,16 @@ const deliverOrder = () => {
   }
 };
 
-const failOrder = () => {
+const failOrder = async () => {
+  if (isEmergencyProcessing.value) return;
   const confirmed = confirm("¿Estás seguro de que deseas marcar la orden como FALLIDA?");
-  if (confirmed) {
-    updateOrder('FALLIDA');
+  if (!confirmed) return;
+  isEmergencyProcessing.value = true;
+  const ok = await reportEmergency(); // Crea EmergencyReport primero
+  if (ok) {
+    await updateOrder('FALLIDA'); // Solo cambia estado si la emergencia fue registrada
   }
+  isEmergencyProcessing.value = false;
 };
 
 onMounted(() => {
@@ -143,6 +169,7 @@ definePageMeta({
           <button
             class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
             @click="failOrder"
+            :disabled="isEmergencyProcessing"
           >
             Emergencia
           </button>

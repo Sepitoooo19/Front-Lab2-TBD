@@ -110,4 +110,9 @@ export interface NearestDeliveryPointDTO {
   distanceMeters: number;
 }
 
-
+export type EmergencyReport = {
+  id: number;
+  orderId: number;
+  dealerId: number;
+  ubication: string; // WKT
+};

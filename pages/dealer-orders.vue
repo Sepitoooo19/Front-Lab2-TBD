@@ -2,9 +2,10 @@
 import { ref, onMounted } from 'vue';
 import { useRuntimeConfig } from '#app';
 import { getOrdersByDealerDto } from '~/services/ordersService';
-import { getClientById } from '~/services/clientService';
+import { getEmergencyReportsByOrder } from '~/services/emergencyService';
 import { wktToLatLng } from '~/utils/wktUtils';
 import OrdersMap from '~/components/common/OrdersMap.vue';
+import type { EmergencyReport } from '~/types/types';
 
 // Extiende el tipo para incluir clientId y address opcionales
 type DealerOrder = {
@@ -30,9 +31,9 @@ const isLoadingMap = ref(true);
 
 onMounted(async () => {
   try {
-    // Forzamos el tipo extendido
     orders.value = await getOrdersByDealerDto() as DealerOrder[];
 
+    // Solo para las órdenes FALLIDA, busca su EmergencyReport y agrega al mapa
     const points: Array<{
       id: number,
       location: string | null,
@@ -40,23 +41,28 @@ onMounted(async () => {
       status?: string
     }> = [];
 
-    await Promise.all(orders.value.map(async (order) => {
-      try {
-        if (order.clientId) {
-          const client = await getClientById(order.clientId);
-          if (client && client.ubication) {
-            points.push({
-              id: order.id,
-              location: client.ubication,
-              address: order.address,
-              status: order.status
+    await Promise.all(orders.value
+      .filter(order => order.status === 'FALLIDA')
+      .map(async (order) => {
+        try {
+          const reports = await getEmergencyReportsByOrder(order.id);
+          // Puede haber más de un reporte, toma el primero (o todos si quieres)
+          if (reports && reports.length > 0) {
+            // Si quieres mostrar todos los reportes de emergencia para una orden, usa forEach aquí
+            reports.forEach(report => {
+              points.push({
+                id: order.id,
+                location: report.ubication,
+                address: `Orden #${order.id}`,
+                status: order.status
+              });
             });
           }
+        } catch (err) {
+          // Si falla, no agrega el punto
         }
-      } catch (err) {
-        // Si falla, no agrega el punto
-      }
-    }));
+      })
+    );
 
     ordersForMap.value = points;
     isLoadingMap.value = false;
@@ -83,9 +89,9 @@ const formatDeliveryDate = (order: DealerOrder) => {
   <div class="p-6">
     <h1 class="text-2xl font-bold mb-4">Historial de Órdenes</h1>
 
-    <!-- Mapa de historial de órdenes -->
+    <!-- Mapa de órdenes fallidas -->
     <div class="mb-10">
-      <h2 class="text-lg font-semibold mb-2">Mapa de historial de órdenes</h2>
+      <h2 class="text-lg font-semibold mb-2">Mapa de emergencias (órdenes fallidas)</h2>
       <div
         class="rounded-xl shadow-lg border overflow-hidden bg-white"
         style="height: 18rem; min-height: 250px; width: 100%;"

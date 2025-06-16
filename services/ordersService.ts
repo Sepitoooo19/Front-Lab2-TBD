@@ -200,26 +200,57 @@ export const getProductsByOrderId = async (orderId: number): Promise<Product[]> 
 // Función para crear un pedido
 // Entrada : objeto del pedido, lista de ids de productos y token de autenticación
 // Salida : pedido creado
-export const createOrder = async (order: { orderDate: string; status: string }, productIds: string): Promise<void> => {
-  const token = localStorage.getItem('jwt'); // Obtén el token del localStorage
+export const createOrder = async (order: Omit<Order, 'id'>, productIds: number[]) => {
+  // Verificación del token JWT
+  const token = localStorage.getItem('jwt')
+  if (!token) throw new Error('No se encontró el token de autenticación')
 
-  if (!token) {
-    throw new Error('No se encontró el token de autenticación');
+  try {
+    // Verificar si el token está expirado
+    const payload = JSON.parse(atob(token.split('.')[1]))
+    if (payload.exp * 1000 < Date.now()) {
+      localStorage.removeItem('jwt')
+      throw new Error('Sesión expirada. Por favor vuelve a iniciar sesión')
+    }
+
+    // Preparamos la solicitud
+    const queryParams = new URLSearchParams()
+    productIds.forEach(id => queryParams.append('productIds', id.toString()))
+
+    const response = await fetch(`${config.public.apiBase}/orders/create?${queryParams}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(order)
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => null)
+      throw new Error(errorData?.message || `Error HTTP: ${response.status}`)
+    }
+
+    return await response.json() as Order
+  } catch (error) {
+    console.error('Error en createOrder:', error)
+    throw error instanceof Error ? error : new Error('Error desconocido al crear la orden')
   }
+}
 
-  const response = await fetch(`${config.public.apiBase}/orders/create?productIds=${productIds}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`, // Incluye el token en el encabezado
-    },
-    body: JSON.stringify(order), // Enviar el cuerpo de la orden
-  });
-
-  if (!response.ok) {
-    throw new Error('Error al crear el pedido');
+// Función para verificar expiración del token
+function isTokenExpired(token: string): boolean {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    const expirationTime = payload.exp * 1000;
+    console.log('Token expira en:', new Date(expirationTime)); // Debug
+    return expirationTime < Date.now();
+  } catch (error) {
+    console.error('Error al decodificar token:', error);
+    return true;
   }
-};
+}
+
 
 // Función para obtener la dirección del cliente
 // Entrada : token de autenticación

@@ -21,6 +21,7 @@ export interface Order {
   dealerName: string
   totalPrice: number
   totalProducts: number
+  estimatedRoute: string;
 }
 
 export interface Dealer {

@@ -175,6 +175,7 @@ definePageMeta({
           <OrdersMap
             :orders="ordersForMap"
             :dealer-location="dealerLocation"
+            :show-route="false"
           />
         </div>
       </div>

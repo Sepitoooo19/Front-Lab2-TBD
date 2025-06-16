@@ -1,18 +1,18 @@
 <template>
   <div class="order-map">
     <ClientOnly>
-      <div class="order-map-container">
+      <div class="order-map-container" style="position: relative;">
         <LMap
           v-if="isMounted"
           v-model:zoom="zoom"
           :center="computedCenter"
+          ref="lmap"
           style="height: 250px; width: 100%;"
         >
           <LTileLayer 
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           />
-          <!-- Dealer marker (solo si dealerLocation está presente) -->
           <LMarker
             v-if="dealerLocation"
             :lat-lng="[dealerLocation.lat, dealerLocation.lng]"
@@ -22,7 +22,6 @@
               <span class="font-bold" style="color: #2563eb">Tú (Dealer)</span>
             </LPopup>
           </LMarker>
-          <!-- Order delivery points -->
           <LMarker
             v-for="order in ordersWithLocation"
             :key="order.id"
@@ -43,9 +42,12 @@
 
 <script setup lang="ts">
 import 'leaflet/dist/leaflet.css'
+import 'leaflet-routing-machine/dist/leaflet-routing-machine.css'
 import { LMap, LTileLayer, LMarker, LPopup } from '@vue-leaflet/vue-leaflet'
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch, nextTick } from 'vue'
 import L from 'leaflet'
+// @ts-ignore
+import 'leaflet-routing-machine'
 
 // Props
 const props = defineProps<{
@@ -57,6 +59,7 @@ const props = defineProps<{
   }>
   dealerLocation?: { lat: number, lng: number } | null
   showStatusIcons?: boolean
+  showRoute?: boolean // <-- Nueva prop para controlar si se dibuja la ruta
 }>()
 
 const isMounted = ref(false)
@@ -142,7 +145,67 @@ function getOrderIcon(order: { status?: string }) {
   return defaultIcon
 }
 
+const lmap = ref<any>(null)
+let routeControl: any = null
+
+// Dibuja la ruta solo si showRoute es true
+async function safeAddRoute(retry = 0) {
+  if (!props.showRoute) return
+  if (!lmap.value?.leafletObject) {
+    if (retry < 10) setTimeout(() => safeAddRoute(retry + 1), 150)
+    return
+  }
+  // Limpia cualquier ruta anterior
+  if (routeControl) {
+    try { lmap.value.leafletObject.removeControl(routeControl) } catch {}
+    routeControl = null
+  }
+  if (
+    !props.dealerLocation ||
+    ordersWithLocation.value.length === 0
+  ) return
+
+  const dest = ordersWithLocation.value[0]
+  routeControl = L.Routing.control({
+    waypoints: [
+      L.latLng(props.dealerLocation.lat, props.dealerLocation.lng),
+      L.latLng(dest.lat, dest.lng)
+    ],
+    lineOptions: {
+      styles: [{ color: '#2563eb', weight: 6 }]
+    },
+    routeWhileDragging: false,
+    addWaypoints: false,
+    draggableWaypoints: false,
+    fitSelectedRoutes: true,
+    show: false,
+    createMarker: () => null
+  }).addTo(lmap.value.leafletObject)
+}
+
 onMounted(() => {
   isMounted.value = true
+  nextTick(() => safeAddRoute())
 })
+
+watch(
+  () => [
+    props.dealerLocation ? props.dealerLocation.lat : null,
+    props.dealerLocation ? props.dealerLocation.lng : null,
+    ordersWithLocation.value.length > 0 ? ordersWithLocation.value[0].lat : null,
+    ordersWithLocation.value.length > 0 ? ordersWithLocation.value[0].lng : null,
+    props.showRoute // observa la prop showRoute
+  ],
+  () => {
+    nextTick(() => safeAddRoute())
+  }
+)
 </script>
+
+<style>
+.order-map-container {
+  position: relative;
+  width: 100%;
+  height: 250px;
+}
+</style>

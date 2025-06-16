@@ -7,5 +7,6 @@
 </template>
 
 <script setup lang="ts">
-// Estilos globales ahora en assets/css/main.css
+  import 'leaflet/dist/leaflet.css'
+  import 'leaflet-routing-machine/dist/leaflet-routing-machine.css'
 </script>

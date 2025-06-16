@@ -13,25 +13,7 @@
             identificar el punto de entrega más lejano desde cada empresa asociada</p>
       </NuxtLink>
 
-      <!-- 2. Clientes dentro de una zona de cobertura -->
-      <NuxtLink 
-        to="/admin/spatial-queries/client-in-zone"
-        class="border border-gray-300 rounded-lg p-4 bg-white shadow-md hover:shadow-lg transition-shadow cursor-pointer block"
-      >
-        <h2 class="text-xl font-bold mb-2">🗺️ Clientes dentro de una zona de cobertura</h2>
-        <p class="text-gray-600">Lista clientes ubicados dentro del radio de cobertura de una empresa</p>
-      </NuxtLink>
-
-      <!-- 3. Distancia total recorrida por un repartidor -->
-      <NuxtLink 
-        to="/admin/spatial-queries/total-distance-dealer"
-        class="border border-gray-300 rounded-lg p-4 bg-white shadow-md hover:shadow-lg transition-shadow cursor-pointer block"
-      >
-        <h2 class="text-xl font-bold mb-2">🚴 Distancia total recorrida por un repartidor</h2>
-        <p class="text-gray-600">Calcula la distancia total recorrida por un repartidor en el último mes</p>
-      </NuxtLink>
-
-      <!-- 4. Pedidos cuya ruta cruce más de 2 zonas -->
+      <!-- 2. Pedidos cuya ruta cruce más de 2 zonas -->
       <NuxtLink 
         to="/admin/spatial-queries/orders-2zones"
         class="border border-gray-300 rounded-lg p-4 bg-white shadow-md hover:shadow-lg transition-shadow cursor-pointer block"
@@ -40,7 +22,7 @@
         <p class="text-gray-600">Filtra pedidos cuya ruta de entrega atraviesa múltiples zonas geográficas</p>
       </NuxtLink>
 
-      <!-- 5. Clientes lejanos a empresas -->
+      <!-- 3. Clientes lejanos a empresas -->
       <NuxtLink 
         to="/admin/spatial-queries/clients-5km"
         class="border border-gray-300 rounded-lg p-4 bg-white shadow-md hover:shadow-lg transition-shadow cursor-pointer block"

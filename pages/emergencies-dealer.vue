@@ -98,6 +98,7 @@ const formatDeliveryDate = (order: DealerOrder) => {
           <OrdersMap
             :orders="ordersForMap"
             :show-status-icons="true"
+            :show-route="false"
           />
         </div>
       </div>

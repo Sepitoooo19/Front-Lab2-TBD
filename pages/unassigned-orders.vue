@@ -107,6 +107,7 @@ definePageMeta({
         <div v-else class="h-full w-full">
           <OrdersMap
             :orders="ordersForMap"
+            :show-route="false"
           />
         </div>
       </div>

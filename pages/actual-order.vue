@@ -141,6 +141,7 @@ definePageMeta({
             <OrdersMap
               :orders="clientUbication ? [{ id: order.id, location: `POINT(${clientUbication.lng} ${clientUbication.lat})`, address: order.address }] : []"
               :dealer-location="dealerUbication"
+              :show-route="true"
             />
           </div>
         </div>

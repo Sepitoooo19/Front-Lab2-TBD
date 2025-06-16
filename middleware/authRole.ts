@@ -19,6 +19,7 @@ export default defineNuxtRouteMiddleware((to, from) => {
       '/orders',
       '/dealers',
       '/unassigned-orders',
+      '/coverage',
       '/companies-admin',
       '/querys',
       '/map-querys',

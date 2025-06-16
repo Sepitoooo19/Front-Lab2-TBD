@@ -8,6 +8,13 @@ export interface Client {
   ubication: string
 }
 
+declare module 'geojson' {
+  interface LineString {
+    type: 'LineString';
+    coordinates: number[][]; // [longitud, latitud][]
+  }
+}
+
 export interface Order {
   id: number
   address: string
@@ -21,6 +28,7 @@ export interface Order {
   dealerName: string
   totalPrice: number
   totalProducts: number
+  estimatedRoute: string | null; // Ruta estimada (equivalente a estimated_route)
 }
 
 export interface Dealer {
@@ -116,6 +124,23 @@ export type EmergencyReport = {
   dealerId: number;
   ubication: string; // WKT
 };
+
+export interface CoverageArea {
+  coverageId: number;
+  name: string;
+  coverageArea: string; // WKT del polígono (ej: "POLYGON((...))")
+}
+
+export interface CoverageCheckDTO {
+  clientId: number;
+  clientName: string;
+  companyId: number;
+  companyName: string;
+  coverageId: number | null;  // Nullable
+  coverageName: string | null; // Nullable
+  isCovered: boolean;
+  distanceMeters: number;
+}
 
 export interface DealerWithDistanceDTO {
   id: number;

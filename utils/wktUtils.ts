@@ -76,11 +76,45 @@ export function latLngArrayToPolygonWKT(points: { lng: number, lat: number }[]):
 }
 
 // Parsea un POLYGON WKT a array de puntos
-export function wktPolygonToLatLngArray(wkt: string): { lng: number, lat: number }[] | null {
+export function wktPolygonToLatLngArray(wkt: string): [number, number][] | null {
   const match = wkt.match(/^POLYGON\s*\(\((.+)\)\)$/);
   if (!match) return null;
+  
   return match[1].split(',').map(pair => {
     const [lng, lat] = pair.trim().split(/\s+/).map(Number);
-    return { lng, lat };
+    return [lat, lng] as [number, number]; // Convertir a formato Leaflet
   });
 }
+
+/**
+ * Convierte un WKT LineString (de PostGIS) a formato GeoJSON LineString
+ * @param wkt WKT LineString (ej: "LINESTRING(10 20, 30 40)")
+ * @returns GeoJSON LineString o null si el formato es inválido
+ */
+  export function wktLineStringToGeoJSON(wkt: string | null): GeoJSON.LineString | null {
+    if (!wkt) return null;
+    
+    // Expresión regular para LINESTRING con diferentes formatos
+    const match = wkt.match(/^LINESTRING\s*\((.+)\)$/i);
+    if (!match) return null;
+    
+    try {
+      const pointsStr = match[1];
+      const coordinates = pointsStr.split(',').map(pointStr => {
+        const [lng, lat] = pointStr.trim().split(/\s+/).map(Number);
+        return [lng, lat]; // GeoJSON usa [longitud, latitud]
+      });
+      
+      // Validación básica
+      if (coordinates.length < 2) return null;
+      if (coordinates.some(coord => isNaN(coord[0]) || isNaN(coord[1]))) return null;
+      
+      return {
+        type: 'LineString',
+        coordinates
+      };
+    } catch (error) {
+      console.error('Error parsing WKT LineString:', error);
+      return null;
+    }
+  }

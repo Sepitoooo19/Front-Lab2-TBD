@@ -66,6 +66,13 @@
       </div>
     </div>
 
+    <!-- Mostrar mensaje cuando no hay clientes lejanos -->
+    <div v-if="farClients.length === 0 && !loading" class="bg-white rounded-lg shadow-md p-6 mb-6 text-center">
+      <div class="text-gray-500 text-lg py-8">
+        No hay ningún cliente a más de 5km de cualquier empresa
+      </div>
+    </div>
+
     <!-- Lista de resultados -->
     <div v-if="farClients.length > 0" class="bg-white rounded-lg shadow-md p-6">
       <h3 class="text-lg font-semibold mb-4">

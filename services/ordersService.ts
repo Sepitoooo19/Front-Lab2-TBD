@@ -1,8 +1,5 @@
 // services/ordersService.ts (frontend)
 import type { Product, Order, TopSpender, OrderTotalProductsDTO, OrderNameAddressDTO  } from '~/types/types';
-
-
-
 const config = useRuntimeConfig();
 
 // Función para obtener todos los pedidos
@@ -428,6 +425,30 @@ export const getFailedOrdersByClient = async (): Promise<Order[]> => {
 
   if (!response.ok) {
     throw new Error('Error al obtener órdenes fallidas del cliente');
+  }
+
+  return await response.json();
+};
+
+/**
+ * Obtiene los pedidos cuya ruta estimada cruza más de 2 zonas de reparto
+ * @returns Lista de OrderNameAddressDTO con información de pedidos y clientes
+ */
+export const getOrdersCrossingMultipleZones = async (): Promise<OrderNameAddressDTO[]> => {
+  const token = localStorage.getItem('jwt'); // Obtener token si es necesario
+  
+  const response = await fetch(`${config.public.apiBase}/orders/crossing-multiple-zones`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token && { Authorization: `Bearer ${token}` }), // Incluir token si existe
+    },
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => null);
+    const errorMessage = errorData?.message || 'Error al obtener pedidos que cruzan múltiples zonas';
+    throw new Error(errorMessage);
   }
 
   return await response.json();

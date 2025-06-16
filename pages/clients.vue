@@ -37,6 +37,11 @@ const editClient = (client: Client) => {
   router.push(`/clients/${client.id}/edit`); // Ruta para editar cliente
 };
 
+// Función para ver la cobertura de un cliente
+const viewCoverage = (clientId: number) => {
+  router.push(`/coverage?clientId=${clientId}`);
+};
+
 // Función para eliminar un cliente y refrescar la lista
 // Metodo: deleteClientById y getAllClients
 const deleteClient = async (clientId: number) => {
@@ -120,6 +125,12 @@ const closeOrdersModal = () => {
               class="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600"
             >
               Ver órdenes
+            </button>
+            <button
+              class="bg-green-500 hover:bg-green-600 text-white font-semibold py-1 px-2 rounded"
+              @click="viewCoverage(client.id)"
+            >
+              Cobertura
             </button>
           </td>
         </tr>

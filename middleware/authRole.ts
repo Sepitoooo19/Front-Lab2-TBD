@@ -13,7 +13,17 @@ export default defineNuxtRouteMiddleware((to, from) => {
   // Define las rutas permitidas para cada rol
   const allowedRoutes: Record<string, string[]> = {
     CLIENT: ['/dashboard', '/client-orders', '/client-cart', '/profile'],
-    ADMIN: ['/admin/dashboard', '/clients', '/orders', '/dealers', '/unassigned-orders', '/companies-admin', '/querys', '/map-querys'],
+    ADMIN: [
+      '/admin/dashboard',
+      '/clients',
+      '/orders',
+      '/dealers',
+      '/unassigned-orders',
+      '/companies-admin',
+      '/querys',
+      '/map-querys',
+      '/admin/spatial-queries',
+      '/admin/spatial-queries/*'],
     DEALER: ['/dealer/dashboard', '/unassigned-orders-dealer', '/profile-dealer'],
   };
 

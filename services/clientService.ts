@@ -1,5 +1,5 @@
 import { useRuntimeConfig } from '#app';
-import type { Client } from '~/types/types'; // Asegúrate que tu tipo Client esté bien definido
+import type { Client } from '~/types/types';
 
 const config = useRuntimeConfig();
 
@@ -144,3 +144,25 @@ export async function getClient(): Promise<Client> {
     headers: { 'Authorization': `Bearer ${token}` }
   });
 }
+
+/**
+ * Obtiene clientes ubicados a más de 5km de cualquier empresa
+ * @returns Promise<Client[]> Lista de clientes con sus datos completos
+ * @throws Error cuando falla la solicitud al servidor
+ */
+export const getClientsBeyond5Km = async (): Promise<Client[]> => {
+  try {
+    const response = await fetch(`${config.public.apiBase}/clients/beyond-5km`);
+    
+    if (!response.ok) {
+      throw new Error(`Error ${response.status}: ${response.statusText}`);
+    }
+    
+    const data: Client[] = await response.json();
+    return data;
+    
+  } catch (error) {
+    console.error('Error en getClientsBeyond5Km:', error);
+    throw new Error('No se pudieron obtener los clientes lejanos');
+  }
+};
